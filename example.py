@@ -90,13 +90,6 @@ if __name__ == "__main__":
                                                   )
     coin_allpix = local2global(coin_allpix, **coord_transform)
 
-    # ###### VALIDATION  ##########
-    vs, vp = (256, 256, 256), 0.1
-    sp = source.position.translation
-    valid_psource(coinc_ref, src_pos=sp, **reco_params)
-    valid_psource(coin_single, src_pos=sp, **reco_params)
-    valid_psource(coin_allpix, src_pos=sp, **reco_params)
-
     # ##### SINGLES VS ALLPIX #####
     plot_energies(max_keV=160,
                   hits_list=[hits_single, hits_allpix],
@@ -104,3 +97,10 @@ if __name__ == "__main__":
                   coincidences_list=[coin_single, coin_allpix],
                   names=['singles', 'allpix'],
                   alphas=[0.5, 0.5, 0.5])
+
+    # ###### VALIDATION  ##########
+    vs, vp = (256, 256, 256), 0.1
+    sp = source.position.translation
+    valid_psource(coinc_ref, src_pos=sp, **reco_params)
+    valid_psource(coin_single, src_pos=sp, **reco_params)
+    valid_psource(coin_allpix, src_pos=sp, **reco_params)
