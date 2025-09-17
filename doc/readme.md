@@ -77,7 +77,9 @@ Some functions have faster (experimental) versions. For example:
 
 ## Reconstruction
 
-Performance varies depending on the simulation and platform/GPU, but typically, from fastest to slowest:
+Performance varies depending on the simulation and platform/GPU, but typically, from
+fastest to slowest:
+
 - CoReSi
 - PyTorch
 - Cupy
@@ -232,27 +234,16 @@ For each component, several modules are available.
     - DefaultDigitizer
     - CSADigitizer
 
-
 # Analysing hits
 
-Gate hits allows to reconstruct ideal cones, as if the Compton camera was perfect.
+Gate hits (sometime called gHits here) allows to reconstruct ideal cones, as if the
+Compton camera was perfect.
+
 Pixel hits from Allpix2 allow to reconstruct cones as would be done with a Timepix3
 detector.
 
-A cone is defined with its:
-
-- apex: Compton interaction point
-- axis: direction of the scattered photon (vector between Compton and photoelectric
-  interaction points)
-- opening angle: angle between the scattered and incident photon directions, calculated
-  from the Compton equation
-
-Compton equation:
-cos(opening angle) = 1 - (0.511 * E1_MeV) / (source_MeV * (source_MeV - E1_MeV))
-Where:
-
-- E1_MeV = the energy of the scattered photon
-- source_MeV = the energy of the incident photon.
+Since pixel hit formats are different in smiulation and acquisition softwares (e.g.
+Advacam's Pixet), a new format is defined here, in tools/pixelHits.py.
 
 ## Analysing Gate hits
 
@@ -268,8 +259,8 @@ with small number of events)
 ## Analysing Allpix2 pixel hits
 
 Timepix3 can measure particle interactions in frame-based or data driven mode. When used
-in data driven mode, data is
-stored as a list of pixel hits, where hits contain energy and time.
+in data driven mode, data is stored as a list of pixel hits, where hits contain energy
+and time.
 
 Allpix2 simulation produces PixelHits objects which resemble pixel hits measured with
 Timepix3 detectors.
@@ -344,10 +335,3 @@ With a single layer Timepix3 camera:
 Delta_Z between two interactions can be calculated from their delta_TOA. See, for
 example:
 10.1088/1748-0221/15/01/C01014
-
-### Clustering hits
-
-When using Allpix2, the output is in pixel hits, as when measuring with a Timepix3
-detector. Those are different from gate hits (gHits).
-To reconstruct photon interactions in Timepix3 sensor from pixel hits, i.e. their 3D
-position, time and energy, different algorithms can be used.
