@@ -33,7 +33,8 @@ Assuming python 3.11 is installed:
 git clone git@github.com:tbilloud/gate-pixel.git && cd gate-pixel && python3.11 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && export GLIBC_TUNABLES=glibc.rtld.optional_static_tls=2000000 && mv venv/lib/python3.11/site-packages/opengate_core/plugins venv/lib/python3.11/site-packages/opengate_core/plugins.bak 
 ```
 
-For Allpix², assuming that dependencies are installed (see [5) Optional: Install Allpix2](#5-optional-install-allpix2)) and ROOT is
+For Allpix², assuming that dependencies are installed (
+see [5) Optional: Install Allpix2](#5-optional-install-allpix2)) and ROOT is
 configured (with `source thisroot.sh`):
 
 ```
@@ -245,15 +246,11 @@ processing, and image reconstruction.
 Functions are documented in the [documentation](doc/readme.md) and in their code
 definition (`tools` sub-directory).
 
-By default, output data goes to different folders. Allpix data goes to the 'allpix'
-sub-folder, Gate data to the folder indicared in sim.output_dir (usually just `output`).
-
-Using the function subfolder_output(sim) from tools.utils_opengate, a sub-folder is
-created containing all data, except the weighting potential file that allways go to
-`allpix`.
-That is because the weighting potential file can be reused, and this only happens in
-case the `precise` Allpix configuration is used.
-The subfolder uses the source name and activity
+By default, output data goes to different folders.
+Gate data to the folder indicated in sim.output_dir (usually just `output`).
+Allpix data goes to the 'allpix' sub-folder (configuration files, and, optionally,
+weighting potential files).
+CoReSi data goes to the 'coresi' sub-folder.
 
 After the Gate simulation, one can:
 
@@ -291,7 +288,8 @@ of a reconstruction slice.
 7) Display a 3D image with plot_reco()
 
 Or multiple images side-by-side with plot_recos().
-On macOS, these functions cannot yet be used in the same script as Gate (see [napari/opengate conflict](#napariopengate-conflict)).
+On macOS, these functions cannot yet be used in the same script as Gate (
+see [napari/opengate conflict](#napariopengate-conflict)).
 
 ## [napari/opengate conflict](#napariopengate-conflict)
 

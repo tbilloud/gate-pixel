@@ -12,7 +12,7 @@ from tools.pixelCoincidences import gHits2pixelCoincidences_prototype, local2glo
 from tools.utils import charge_speed_mm_ns
 from tools.allpix import gHits2allpix2pixelHits
 from tools.pixelClusters import pixelHits2pixelClusters
-from tools.utils_plot import plot_hitsNclusters
+from tools.utils_plot import plot_energies
 
 um, mm, keV, Bq, ms = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_units.ms
 
@@ -57,33 +57,33 @@ if __name__ == "__main__":
     coinc_ref = gHits2pixelCoincidences_prototype(sim.output_dir / hits.output_filename, source.energy.mono)
 
     # #########  SINGLES ##############
-    hits_sgl = singles2pixelHits(sim.output_dir / singles_b.output_filename,
-                                 charge_speed_mm_ns=spd,
-                                 thickness_mm=thick,
-                                 actor_name='Singles_b')
-    clstr_sgl = pixelHits2pixelClusters(hits_sgl, npix=npix, window_ns=100)
-    coin_sgl = pixelClusters2pixelCoincidences(clstr_sgl,
-                                               source_MeV=source.energy.mono,
-                                               thickness_mm=thick,
-                                               charge_speed_mm_ns=spd,
-                                               )
-    coin_sgl = local2global(coin_sgl, **coord_transform)
+    hits_single = singles2pixelHits(sim.output_dir / singles_b.output_filename,
+                                    charge_speed_mm_ns=spd,
+                                    thickness_mm=thick,
+                                    actor_name='Singles_b')
+    clstr_single = pixelHits2pixelClusters(hits_single, npix=npix, window_ns=100)
+    coin_single = pixelClusters2pixelCoincidences(clstr_single,
+                                                  source_MeV=source.energy.mono,
+                                                  thickness_mm=thick,
+                                                  charge_speed_mm_ns=spd,
+                                                  )
+    coin_single = local2global(coin_single, **coord_transform)
 
     # ########### ALLPIX ##############
-    pHits_apx = gHits2allpix2pixelHits(sim,
-                                       npix=npix,
-                                       config='precise',
-                                       log_level='FATAL',
-                                       skip_hitless_events=False,
-                                       bias_V=bias,
-                                       mobility_electron_cm2_Vs=mobility_e,
-                                       mobility_hole_cm2_Vs=500,
-                                       threshold_smearing=30,
-                                       electronics_noise=110,
-                                       charge_per_step=10, # more speeds Allpix up
-                                       )
-    clstr = pixelHits2pixelClusters(pHits_apx, npix=npix, window_ns=100)
-    coin_allpix = pixelClusters2pixelCoincidences(clstr,
+    hits_allpix = gHits2allpix2pixelHits(sim,
+                                         npix=npix,
+                                         config='precise',
+                                         log_level='FATAL',
+                                         skip_hitless_events=False,
+                                         bias_V=bias,
+                                         mobility_electron_cm2_Vs=mobility_e,
+                                         mobility_hole_cm2_Vs=500,
+                                         threshold_smearing=30,
+                                         electronics_noise=110,
+                                         charge_per_step=10,  # more speeds Allpix up
+                                         )
+    clstr_allpix = pixelHits2pixelClusters(hits_allpix, npix=npix, window_ns=100)
+    coin_allpix = pixelClusters2pixelCoincidences(clstr_allpix,
                                                   source_MeV=source.energy.mono,
                                                   thickness_mm=thick,
                                                   charge_speed_mm_ns=spd,
@@ -94,12 +94,13 @@ if __name__ == "__main__":
     vs, vp = (256, 256, 256), 0.1
     sp = source.position.translation
     valid_psource(coinc_ref, src_pos=sp, **reco_params)
-    valid_psource(coin_sgl, src_pos=sp, **reco_params)
+    valid_psource(coin_single, src_pos=sp, **reco_params)
     valid_psource(coin_allpix, src_pos=sp, **reco_params)
 
     # ##### SINGLES VS ALLPIX #####
-    plot_hitsNclusters(max_keV=160,
-                       hits_list=[hits_sgl, pHits_apx],
-                       clusters_list=[clstr_sgl, clstr],
-                       names=['singles', 'allpix'],
-                       alphas=[0.5, 0.5, 0.5])
+    plot_energies(max_keV=160,
+                  hits_list=[hits_single, hits_allpix],
+                  clusters_list=[clstr_single, clstr_allpix],
+                  coincidences_list=[coin_single, coin_allpix],
+                  names=['singles', 'allpix'],
+                  alphas=[0.5, 0.5, 0.5])

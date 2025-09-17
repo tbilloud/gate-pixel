@@ -1,14 +1,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from opengate.logger import global_log
+from tools.pixelHits import ENERGY_keV
 
-def plot_hitsNclusters(
+
+def plot_energies(
         *,
         max_keV,
         min_keV=0,
         hits_list=None,
         clusters_list=None,
-        pairs_list=None,
+        coincidences_list=None,
         names=None,
         colors=None,
         alphas=None,
@@ -24,7 +26,7 @@ def plot_hitsNclusters(
         max_keV (int): Maximum energy (keV) for histogram range and bins.
         min_keV (int): Minimum energy (keV) for histogram range and bins.
         hits_list (list): List of DataFrames for pixel hits.
-        clusters_list (list): List of DataFrames for pixel clusters.
+        coincidences_list (list): List of DataFrames for coincidences.
         names (list): List of labels for each dataset.
         colors (list): List of colors for each dataset.
         alphas (list): List of alpha values for each dataset.
@@ -43,7 +45,7 @@ def plot_hitsNclusters(
     if alphas is None:
         alphas = [0.7] * n
 
-    nr = 3 if pairs_list else 2
+    nr = 3 if coincidences_list else 2
     fig, axes = plt.subplots(nrows=nr, ncols=1, figsize=(8, 10), sharex=True)
 
     def plot_histogram(ax, data_list, title, xlab=False):
@@ -52,7 +54,7 @@ def plot_hitsNclusters(
                 print(f"Warning: empty dataframe for plot '{title}'.")
             else:
                 ax.hist(
-                    data['Energy (keV)'],
+                    data[ENERGY_keV],
                     bins=max_keV - min_keV,
                     range=(min_keV, max_keV),
                     alpha=alpha,
@@ -61,7 +63,7 @@ def plot_hitsNclusters(
                     log=ylog,  # NEW: request log scaling in histogram
                 )
         if xlab:
-            ax.set_xlabel('Energy (keV)')
+            ax.set_xlabel(ENERGY_keV)
         ax.set_ylabel('Counts')
         ax.set_title(title)
         if len(data_list) > 1:
@@ -75,9 +77,12 @@ def plot_hitsNclusters(
 
     plot_histogram(axes[0], hits_list, title='Pixel Hits')
     plot_histogram(axes[1], clusters_list, title='Pixel Clusters',
-                   xlab=False if pairs_list else True)
-    if pairs_list:
-        plot_histogram(axes[2], pairs_list, title='Cluster Pairs', xlab=True)
+                   xlab=False if coincidences_list else True)
+    if coincidences_list:
+        for df in coincidences_list:
+            print(df)
+            df[ENERGY_keV] = df['Energy (keV)_1'] + df['Energy (keV)_2']
+        plot_histogram(axes[2], coincidences_list, title='Cluster Pairs', xlab=True)
 
     if output_filename:
         fig.savefig(output_filename, dpi=300, bbox_inches='tight')

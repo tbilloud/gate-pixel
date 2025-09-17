@@ -7,9 +7,9 @@ import json
 from opengate.utility import g4_units
 from tools.allpix import *
 from tools.utils import metric_num, charge_speed_mm_ns
-from tools.utils_opengate import setup_pixels, set_fluorescence, get_isotope_data
+from tools.utils_opengate import get_isotope_data
 from tools.reconstruction import valid_psource
-from tools.utils_plot import plot_hitsNclusters
+from tools.utils_plot import plot_energies
 from tools.pixelClusters import *
 from tools.pixelCoincidences import pixelClusters2pixelCoincidences, local2global, \
     gHits2pixelCoincidences
@@ -91,8 +91,8 @@ if __name__ == "__main__":
 
     # PIXEL CLUSTERS
     pixelClusters = pixelHits2pixelClusters(pixelHits, npix=npix, window_ns=100)
-    plot_hitsNclusters(max_keV=300, hits_list=[pixelHits],
-                       clusters_list=[pixelClusters])
+    plot_energies(max_keV=300, hits_list=[pixelHits],
+                  clusters_list=[pixelClusters])
 
     # PIXEL COINCIDENCES
     spd = charge_speed_mm_ns(mobility_cm2_Vs=mobility_e, bias_V=bias, thick_mm=thick)
