@@ -30,10 +30,10 @@ Requires:
 Assuming python 3.11 is installed:
 
 ```
-git clone git@github.com:tbilloud/gate-pixel.git && cd gate-pixel && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && mv venv/lib/python3.11/site-packages/opengate_core/plugins venv/lib/python3.11/site-packages/opengate_core/plugins.bak 
+git clone git@github.com:tbilloud/gate-pixel.git && cd gate-pixel && python3.11 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && export GLIBC_TUNABLES=glibc.rtld.optional_static_tls=2000000 && mv venv/lib/python3.11/site-packages/opengate_core/plugins venv/lib/python3.11/site-packages/opengate_core/plugins.bak 
 ```
 
-For Allpix², assuming ROOT is installed and configured (with `source thisroot.sh`):
+For Allpix², assuming that dependencies are installed (see below) and ROOT is configured (with `source thisroot.sh`):
 
 ```
 mkdir allpix && cd allpix && git clone --depth 1 git@github.com:allpix-squared/allpix-squared.git && cd allpix-squared && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install-noG4 -DBUILD_GeometryBuilderGeant4=OFF -DBUILD_DepositionCosmics=OFF -DBUILD_DepositionGeant4=OFF -DBUILD_DepositionGenerator=OFF -DBUILD_GDMLOutputWriter=OFF -DBUILD_VisualizationGeant4=OFF .. && make -j4 && make install && cd .. && rm -rf .git* && cd ../..
@@ -51,7 +51,7 @@ Install python 3.11 or 3.12 and pip (e.g. use pyenv on MacOS)
 ### 1) Clone repository:
 
 ```
-git clone https://github.com/tbilloud/ComptonCamera
+git clone https://github.com/tbilloud/gate-pixel
 ```
 
 ### 2) Create a virtual environment
@@ -196,7 +196,7 @@ Use cases:
   opengate/Alllpix again.
 
 ```
-git clone https://github.com/tbilloud/ComptonCamera
+git clone https://github.com/tbilloud/gate-pixel
 cd ComptonCamera
 python3 -m venv venv-offline
 source venv-offline/bin/activate
@@ -208,9 +208,12 @@ In opengate, running code without simulation is called 'offline'. See examples/o
 ## [Getting started](#getting-started)
 
 From the root directory (if using Pycharm, set the working directory to the root), run:
+
 `python3 example.py`
 
-Or, if Allpix² is not needed `python3 examples/gateHits2cones.py`
+Or, if Allpix² is not needed:
+
+`python3 examples/gateHits2pixelCoincidences.py`
 
 
 If you get the error:
@@ -219,11 +222,12 @@ If you get the error:
 
 The 1st time you run a simulation, Gate10 will install Geant4 datasets, which can take a
 while. This is done only once.
+
 TIP: if re-installing the virtual environment, save time buy copy-pasting the datasets
 folder, located in `venv/lib/python3.11/site-packages/opengate_core/geant4_data`
 
 If using optional reconstruction functions (i.e. you installed cupy, torch, CoReSi,
-and/or custom functions), also try, with non-installed functions commented out:
+and/or custom functions), also try:
 
 ```
 python3 examples/compare_recos.py
@@ -291,7 +295,7 @@ Plotting functions using napari:
 ## [napari/opengate conflict]
 
 Napari and OpenGate use the same QT backends (PyQt5), which causes conflicts.
-Using Qt-based code (e.g. napari) and gate in the same script leads to warning/crashes.
+Using Qt-based code (e.g. napari) and gate in the same script leads to warnings and crashes.
 
 ### Ubuntu
 
