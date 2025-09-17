@@ -362,7 +362,11 @@ def local2global(pixelCoincidences, translation, rotation, npix, pitch, thicknes
 
     Args:
         pixelCoincidences (DataFrame): Input DataFrame with coresi_events_columns.
-        translation, rotation, npix, pitch, thickness: Transformation parameters.
+        translation (list): Translation vector [x, y, z] of the sensor in global coordinates.
+        rotation (list of list): Rotation matrix (3x3) of the sensor.
+        npix (int): Number of pixels along one dimension (assuming square grid).
+        pitch (float): Pixel pitch (size of one pixel).
+        thickness (float): Sensor thickness.
 
     Returns:
         DataFrame: Updated DataFrame with position columns replaced by global coordinates.

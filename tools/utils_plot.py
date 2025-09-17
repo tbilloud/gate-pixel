@@ -80,7 +80,6 @@ def plot_energies(
                    xlab=False if coincidences_list else True)
     if coincidences_list:
         for df in coincidences_list:
-            print(df)
             df[ENERGY_keV] = df['Energy (keV)_1'] + df['Energy (keV)_2']
         plot_histogram(axes[2], coincidences_list, title='Cluster Pairs', xlab=True)
 
