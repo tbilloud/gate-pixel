@@ -22,7 +22,7 @@ except ImportError:
 
 # Pixel coincidences format definition: same as CoReSi input
 coincidences_columns = ['n']
-for i in range(3):
+for i in range(2):
     coincidences_columns += [f'evt_{i + 1}', f'PositionX_{i + 1}', f'PositionY_{i + 1}',
                              f'PositionZ_{i + 1}', f'Energy (keV)_{i + 1}']
 
@@ -141,7 +141,7 @@ def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01,
         if compton_pos:
             coincidences.append(
                 [2, 1] + compton_pos + [1000 * E1] + [2] + photoelec_pos + [
-                    1000 * E2] + [3, 0, 0, 0, 0])
+                    1000 * E2])
 
     df = pandas.DataFrame(coincidences, columns=coincidences_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
@@ -279,7 +279,7 @@ def gHits2pixelCoincidences(file_path, source_MeV, tolerance_MeV=0.01, entry_sto
             continue
 
         coincidences.append([2, 1] + compton_pos.tolist() + [1000 * E1] + [2] +
-                            photoelec_pos.tolist() + [1000 * E2] + [3, 0, 0, 0, 0])
+                            photoelec_pos.tolist() + [1000 * E2])
 
     df = pandas.DataFrame(coincidences, columns=coincidences_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
@@ -353,12 +353,10 @@ def pixelClusters2pixelCoincidences(pixelClusters, thickness_mm, charge_speed_mm
         pos_photoel = [cl_photoel[PIX_X_ID], cl_photoel[PIX_Y_ID], z_compton + dZ_frac]
 
         # 5) Construct cone
-        E1_MeV = cl_compton[ENERGY_keV] / 1000
-        E1_keV = E1_MeV * 1000
-        E2_keV = 1000 * Esum_MeV - E1_keV
+        E1_keV = cl_compton[ENERGY_keV]
+        E2_keV = cl_photoel[ENERGY_keV]
         coincidences.append(
-            [eventid] + [2, 1] + pos_compton + [E1_keV] + [2] + pos_photoel + [E2_keV] +
-            [3, 0, 0, 0, 0])
+            [eventid] + [2, 1] + pos_compton + [E1_keV] + [2] + pos_photoel + [E2_keV])
         pixelCoincidences = pandas.DataFrame(coincidences,
                                              columns=[EVENTID] + coincidences_columns)
 
@@ -392,7 +390,7 @@ def local2global(pixelCoincidences, translation, rotation, npix, pitch, thicknes
     if df_copy.empty:
         global_log.error('Input DataFrame is empty. No coordinates to convert.')
     else:
-        for i in range(1, 4):  # For each event (1, 2, 3)
+        for i in range(1, 2):  # For each event (1, 2, 3)
             position_cols = [f"PositionX_{i}", f"PositionY_{i}", f"PositionZ_{i}"]
 
             def convert_row(row):
