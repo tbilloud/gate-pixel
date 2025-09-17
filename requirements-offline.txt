@@ -1,0 +1,4 @@
+pandas
+uproot
+matplotlib
+napari[all]
