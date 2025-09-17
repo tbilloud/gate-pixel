@@ -221,7 +221,7 @@ From the root directory (if using Pycharm, set the working directory to the root
 
 Or, if Allpix² is not needed:
 
-`python3 examples/gateHits2pixelCoincidences.py`
+`python3 examples/without_allpix.py`
 
 If you get the error:
 `QObject::moveToThread: Current thread (0x5dfc4786c040) is not the object's thread...`  
