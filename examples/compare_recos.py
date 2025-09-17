@@ -56,4 +56,4 @@ if __name__ == "__main__":
     # 1) give it the same input parameters, plus, if needed, extras as kwargs (as coresi)
     # 2) put it in a separate python file in the tools subdirectory
     # 3) update the reconstruct() function in tools/reconstruction.py as shown with the 3 lines starting with `elif method == "custom"`
-    valid_psource(pixelCoincidences, **reco_params, src_pos=sp, method='custom')
+    # valid_psource(pixelCoincidences, **reco_params, src_pos=sp, method='custom')
