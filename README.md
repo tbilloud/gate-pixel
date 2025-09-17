@@ -90,7 +90,7 @@ For PyCharm:
       LD_LIBRARY_PATH=path/venv/lib/python3.11/site-packages/opengate_core.libs:$LD_LIBRARY_PATH
       LD_PRELOAD=path/venv/lib/python3.11/site-packages/opengate_core.libs/libG4processes-d7125d28.so:path/venv/lib/python3.11/site-packages/opengate_core.libs/libG4geometry-cf4c216c.so
       GLIBC_TUNABLES=glibc.rtld.optional_static_tls=2000000
-      PYTHONPATH=path/coresi:$PYTHONPATH
+      PYTHONPATH=path/coresi/coresi:$PYTHONPATH
       ```
     - Expand the box on top with the name of the script you want to run (near ▶)
     - In `Edit Configurations`, with `path` being your absolute path to the repository,
@@ -182,8 +182,9 @@ cd coresi
 git clone --depth 1 https://github.com/CoReSi-SPECT/coresi
 rm -rf coresi/.git* # remove the git folder to avoid conflicts
 cd ..
-export PYTHONPATH=./coresi:$PYTHONPATH
+export PYTHONPATH=./coresi/coresi:$PYTHONPATH
 cp coresi/coresi/constants.yaml .
+pip install torch
 ```
 
 This will create a `coresi` sub-directory, which will contain:
