@@ -63,7 +63,6 @@ if __name__ == "__main__":
                                     actor_name='Singles_b')
     clstr_single = pixelHits2pixelClusters(hits_single, npix=npix, window_ns=100)
     coin_single = pixelClusters2pixelCoincidences(clstr_single,
-                                                  source_MeV=source.energy.mono,
                                                   thickness_mm=thick,
                                                   charge_speed_mm_ns=spd,
                                                   )
@@ -84,7 +83,6 @@ if __name__ == "__main__":
                                          )
     clstr_allpix = pixelHits2pixelClusters(hits_allpix, npix=npix, window_ns=100)
     coin_allpix = pixelClusters2pixelCoincidences(clstr_allpix,
-                                                  source_MeV=source.energy.mono,
                                                   thickness_mm=thick,
                                                   charge_speed_mm_ns=spd,
                                                   )

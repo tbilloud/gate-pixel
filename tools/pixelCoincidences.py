@@ -23,10 +23,12 @@ except ImportError:
 # Pixel coincidences format definition: same as CoReSi input
 coincidences_columns = ['n']
 for i in range(3):
-    coincidences_columns += [f'evt_{i + 1}', f'PositionX_{i + 1}', f'PositionY_{i + 1}', f'PositionZ_{i + 1}', f'Energy (keV)_{i + 1}']
+    coincidences_columns += [f'evt_{i + 1}', f'PositionX_{i + 1}', f'PositionY_{i + 1}',
+                             f'PositionZ_{i + 1}', f'Energy (keV)_{i + 1}']
 
 
-def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
+def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01,
+                                      entry_stop=None):
     """
     Read Gate hits (from DigitizerHitsCollectionActor) and filter Compton/photo-electric coincidences.
 
@@ -73,7 +75,8 @@ def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01,
     daughter_name = None
     if source_is_ion:
         daughter_name, gamma_energy = source_MeV.split('_')
-        global_log.debug(f"Filtering {gamma_energy} keV gammas with ParentParticleName={daughter_name}")
+        global_log.debug(
+            f"Filtering {gamma_energy} keV gammas with ParentParticleName={daughter_name}")
         source_MeV = float(gamma_energy) / 1000  # Convert keV to MeV
 
     def find_descendants(df, part_id):
@@ -96,15 +99,18 @@ def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01,
         if sensor_got_primary:
             n_events_primary += 1
             if source_is_ion:
-                part_id = grp[grp['ParentParticleName'] == daughter_name]['TrackID'].values[0]
+                part_id = \
+                grp[grp['ParentParticleName'] == daughter_name]['TrackID'].values[0]
                 descendants = find_descendants(grp, part_id)
-                totenergy = grp[grp['TrackID'].isin(descendants.union({part_id}))]['TotalEnergyDeposit'].sum()
+                totenergy = grp[grp['TrackID'].isin(descendants.union({part_id}))][
+                    'TotalEnergyDeposit'].sum()
                 full_absorb = abs(totenergy - source_MeV) < tolerance_MeV
                 if full_absorb:
                     grp = grp[grp['TrackID'].isin(descendants.union({part_id}))]
-                    grp.loc[:, 'TrackID'] -= (part_id-1)
+                    grp.loc[:, 'TrackID'] -= (part_id - 1)
             else:
-                full_absorb = abs(grp['TotalEnergyDeposit'].sum() - source_MeV) < tolerance_MeV
+                full_absorb = abs(
+                    grp['TotalEnergyDeposit'].sum() - source_MeV) < tolerance_MeV
             # All primary energy was deposited
             if full_absorb:
                 n_events_full_edep += 1
@@ -133,7 +139,9 @@ def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                     photoelec_pos = [h2[f'PrePosition_{ax}'] for ax in 'XYZ']
 
         if compton_pos:
-            coincidences.append([2,1]+compton_pos+[1000*E1]+[2]+photoelec_pos+[1000*E2]+[3,0,0,0,0])
+            coincidences.append(
+                [2, 1] + compton_pos + [1000 * E1] + [2] + photoelec_pos + [
+                    1000 * E2] + [3, 0, 0, 0, 0])
 
     df = pandas.DataFrame(coincidences, columns=coincidences_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
@@ -143,6 +151,7 @@ def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01,
     global_log_debug_df(df)
     global_log.info(f"Offline [coincidences]: {get_stop_string(stime)}")
     return df
+
 
 def gHits2pixelCoincidences(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
     """
@@ -171,14 +180,17 @@ def gHits2pixelCoincidences(file_path, source_MeV, tolerance_MeV=0.01, entry_sto
     particle_names = hits_df['ParticleName'].astype(str).to_numpy()
     global_time = hits_df['GlobalTime'].to_numpy()
     # Pre/Post positions
-    pre_pos = np.stack([hits_df[f'PrePosition_{ax}'].to_numpy() for ax in 'XYZ'], axis=1)
-    post_pos = np.stack([hits_df[f'PostPosition_{ax}'].to_numpy() for ax in 'XYZ'], axis=1)
+    pre_pos = np.stack([hits_df[f'PrePosition_{ax}'].to_numpy() for ax in 'XYZ'],
+                       axis=1)
+    post_pos = np.stack([hits_df[f'PostPosition_{ax}'].to_numpy() for ax in 'XYZ'],
+                        axis=1)
 
     source_is_ion = isinstance(source_MeV, str) and source_MeV[0].isalpha()
     daughter_name = None
     if source_is_ion:
         daughter_name, gamma_energy = source_MeV.split('_')
-        global_log.debug(f"Filtering {gamma_energy} keV gammas with ParentParticleName={daughter_name}")
+        global_log.debug(
+            f"Filtering {gamma_energy} keV gammas with ParentParticleName={daughter_name}")
         source_MeV = float(gamma_energy) / 1000  # Convert keV to MeV
 
     # Group indices by EventID for fast access
@@ -278,9 +290,9 @@ def gHits2pixelCoincidences(file_path, source_MeV, tolerance_MeV=0.01, entry_sto
     global_log.info(f"Offline [coincidences]: {get_stop_string(stime)}")
     return df
 
-def pixelClusters2pixelCoincidences(pixelClusters, source_MeV, thickness_mm,
-                        charge_speed_mm_ns, tolerance_MeV=0.01, coincidence_window_ns=100):
 
+def pixelClusters2pixelCoincidences(pixelClusters, thickness_mm, charge_speed_mm_ns,
+                                    coincidence_window_ns=100):
     stime = time.time()
     global_log.info(f"Offline [coincidences]: START")
 
@@ -319,11 +331,10 @@ def pixelClusters2pixelCoincidences(pixelClusters, source_MeV, thickness_mm,
         # 1) Distinguish compton vs photo-electric interactions
         group = group.sort_values(ENERGY_keV)
         Esum_MeV = 0.001 * (group.iloc[0][ENERGY_keV] + group.iloc[1][ENERGY_keV])
-        is_in_energy_range = abs(Esum_MeV - source_MeV) < tolerance_MeV
-        E1max = source_MeV ** 2 / (source_MeV + 0.511 / 2)
+        E1max = Esum_MeV ** 2 / (Esum_MeV + 0.511 / 2)
         only_one_possibility = group.iloc[1][ENERGY_keV] > E1max
         # TODO: this limits the number of selected events, propose other ways
-        if is_in_energy_range and only_one_possibility:
+        if only_one_possibility:
             cl_photoel = group.iloc[1]
             cl_compton = group.iloc[0]
         else:
@@ -344,10 +355,12 @@ def pixelClusters2pixelCoincidences(pixelClusters, source_MeV, thickness_mm,
         # 5) Construct cone
         E1_MeV = cl_compton[ENERGY_keV] / 1000
         E1_keV = E1_MeV * 1000
-        E2_keV = 1000 * source_MeV - E1_keV
-        coincidences.append([eventid]+[2, 1] + pos_compton + [E1_keV] + [2] + pos_photoel + [E2_keV] +
-                     [3, 0, 0, 0, 0])
-        pixelCoincidences = pandas.DataFrame(coincidences, columns=[EVENTID] + coincidences_columns)
+        E2_keV = 1000 * Esum_MeV - E1_keV
+        coincidences.append(
+            [eventid] + [2, 1] + pos_compton + [E1_keV] + [2] + pos_photoel + [E2_keV] +
+            [3, 0, 0, 0, 0])
+        pixelCoincidences = pandas.DataFrame(coincidences,
+                                             columns=[EVENTID] + coincidences_columns)
 
     global_log.info(f"Offline [coincidences]: {len(coincidences)} cones")
     global_log_debug_df(pixelCoincidences)
@@ -393,3 +406,13 @@ def local2global(pixelCoincidences, translation, rotation, npix, pitch, thicknes
         global_log_debug_df(df_copy)
     global_log.info(f"Offline [transform coord]: {get_stop_string(stime)}")
     return df_copy
+
+
+def filter_pixel_coincidences(pixelCoincidences, energies_MeV, tol_MeV):
+    energies_keV = np.array(energies_MeV) * 1000
+    tol_keV = tol_MeV * 1000
+    energy_sum = pixelCoincidences['Energy (keV)_1'] + pixelCoincidences['Energy (keV)_2']
+    mask = np.any([
+        np.abs(energy_sum - e) <= tol_keV for e in energies_keV
+    ], axis=0)
+    return pixelCoincidences[mask]

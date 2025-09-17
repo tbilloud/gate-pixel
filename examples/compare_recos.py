@@ -27,8 +27,9 @@ if __name__ == "__main__":
     hits_path = Path(sim.output_dir) / hits.output_filename
     sp = source.position.translation
     pixelCoincidences = gHits2pixelCoincidences(hits_path, source.energy.mono)
-    reco_params = {'vpitch': 0.2, 'vsize': [256, 256, 256], 'cone_width': 0.1}
-    
+    reco_params = {'vpitch': 0.2, 'vsize': [256, 256, 256], 'cone_width': 0.01,
+                   'energies_MeV': [source.energy.mono], 'tol_MeV': 0.01}
+    tol_MeV = 0.01,
     # #################### NUMPY ##########################
     valid_psource(pixelCoincidences, **reco_params, src_pos=sp, method='numpy')
 
@@ -46,8 +47,6 @@ if __name__ == "__main__":
                   sensor_size=sensor.size,
                   sensor_position=sensor.translation,
                   sensor_rotation=sensor.rotation,
-                  energies_MeV=[source.energy.mono],
-                  tol_MeV=0.01,
                   log_scale=True  # helps see cone profiles in the background
                   )
 

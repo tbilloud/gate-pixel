@@ -9,6 +9,7 @@ import matplotlib.colors
 from matplotlib.gridspec import GridSpec
 from scipy.optimize import curve_fit
 
+from tools.pixelCoincidences import filter_pixel_coincidences
 from tools.utils import get_stop_string
 from tools.pixelHits import EVENTID
 from tools.pixelCones import APEX_X, APEX_Y, APEX_Z, DIRECTION_X, DIRECTION_Y, \
@@ -23,8 +24,8 @@ except ImportError:
     global_log.addHandler(logging.NullHandler())
 
 
-def reconstruct(pixelCoincidences, vpitch, vsize, cone_width=0.01, log=True,
-                method="numpy",
+def reconstruct(pixelCoincidences, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
+                cone_width=0.01, log=True, method="numpy",
                 **kwargs):
     """
     Unified reconstruction interface.
@@ -36,12 +37,12 @@ def reconstruct(pixelCoincidences, vpitch, vsize, cone_width=0.01, log=True,
         cone_width (float): cone width (the larger the value the thicker the cones).
         log (bool): whether to log performance info
         method: "numpy", "cupy", "torch", "coresi" (see README for details)
+        energies_MeV: (list[float]): multiple energy peaks can be used
+        tol_MeV: (float): energy tolerance in MeV
         kwargs: extra parameters for CoReSi:
             sensor_size (list[float])
             sensor_position (list[float]): must be same coord system as pixelCoincidences
             sensor_rotation (3×3 rotation matrix) TODO not implemented yet
-            energies_MeV (list[float]): multiple energy peaks can be used
-            tol_MeV (float): energy tolerance in MeV
     """
 
     if log:
@@ -49,19 +50,25 @@ def reconstruct(pixelCoincidences, vpitch, vsize, cone_width=0.01, log=True,
     stime = time.time()
 
     if method == "coresi":
-        vol = reco_bp_coresi(pixelCoincidences, vpitch, vsize, cone_width * 300,
+        vol = reco_bp_coresi(pixelCoincidences, vpitch=vpitch, vsize=vsize,
+                             cone_width=cone_width * 300, energies_MeV=energies_MeV,
+                             tol_MeV=tol_MeV,
                              **kwargs)
-    elif method == "cupy":
-        vol = reco_bp_cupy(pixelCoincidences, vpitch, vsize, cone_width)
-    elif method == "torch":
-        vol = reco_bp_torch(pixelCoincidences, vpitch, vsize, cone_width)
-    elif method == "numpy":
-        vol = reco_bp_numpy(pixelCoincidences, vpitch, vsize, cone_width)
-    # elif method == "custom":
-    #     from tools.reconstruction_custom import reco_custom
-    #     vol = reco_custom(pixelCoincidences, vpitch, vsize, cone_width)
     else:
-        raise ValueError(f"Unknown method: {method}")
+        if energies_MeV != -1:
+            pixelCoincidences = filter_pixel_coincidences(pixelCoincidences, energies_MeV, tol_MeV)
+        cones = pixelCoincidences2cones(pixelCoincidences, log=False)
+        if method == "cupy":
+            vol = reco_bp_cupy(cones, vpitch, vsize, cone_width)
+        elif method == "torch":
+            vol = reco_bp_torch(cones, vpitch, vsize, cone_width)
+        elif method == "numpy":
+            vol = reco_bp_numpy(cones, vpitch, vsize, cone_width)
+        # elif method == "custom":
+        #     from tools.reconstruction_custom import reco_custom
+        #     vol = reco_custom(pixelCoincidences, vpitch, vsize, cone_width)
+        else:
+            raise ValueError(f"Unknown method: {method}")
 
     if log:
         global_log.info(
@@ -70,8 +77,8 @@ def reconstruct(pixelCoincidences, vpitch, vsize, cone_width=0.01, log=True,
     return vol
 
 
-def reco_bp_numpy(pixelCoincidences, vpitch, vsize, cone_width=0.01):
-    cones = pixelCoincidences2cones(pixelCoincidences, log=False)
+def reco_bp_numpy(cones, vpitch, vsize, cone_width=0.01):
+
     volume = np.zeros(vsize, dtype=np.float32)
     grid_x = np.linspace(-vsize[0] // 2, vsize[0] // 2, vsize[0]) * vpitch
     grid_y = np.linspace(-vsize[1] // 2, vsize[1] // 2, vsize[1]) * vpitch
@@ -99,14 +106,14 @@ def reco_bp_numpy(pixelCoincidences, vpitch, vsize, cone_width=0.01):
     return volume
 
 
-def reco_bp_cupy(pixelCoincidences, vpitch, vsize, cone_width=0.01):
+def reco_bp_cupy(cones, vpitch, vsize, cone_width=0.01):
     try:
         import cupy
     except ImportError:
         global_log.error(f"Please install cupy or use another backend.")
         return np.zeros(vsize, dtype=np.float32)
 
-    cones = pixelCoincidences2cones(pixelCoincidences, log=False)
+
     volume = cupy.zeros(vsize, dtype=cupy.float32)
     grid_x = cupy.linspace(-vsize[0] // 2, vsize[0] // 2, vsize[0]) * vpitch
     grid_y = cupy.linspace(-vsize[1] // 2, vsize[1] // 2, vsize[1]) * vpitch
@@ -135,7 +142,7 @@ def reco_bp_cupy(pixelCoincidences, vpitch, vsize, cone_width=0.01):
     return volume.get()
 
 
-def reco_bp_torch(pixelCoincidences, vpitch, vsize, cone_width=0.01):
+def reco_bp_torch(cones, vpitch, vsize, cone_width=0.01):
     try:
         import torch
     except ImportError:
@@ -145,7 +152,7 @@ def reco_bp_torch(pixelCoincidences, vpitch, vsize, cone_width=0.01):
     dv = torch.device(
         'mps' if torch.backends.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu')
 
-    cones = pixelCoincidences2cones(pixelCoincidences, log=False)
+
     volume = torch.zeros(vsize, dtype=torch.float32, device=dv)
     grid_x = torch.linspace(-vsize[0] // 2, vsize[0] // 2, vsize[0], device=dv) * vpitch
     grid_y = torch.linspace(-vsize[1] // 2, vsize[1] // 2, vsize[1], device=dv) * vpitch
@@ -184,6 +191,7 @@ def reco_bp_coresi(pixelCoincidences, vpitch, vsize, cone_width, sensor_size,
         from coresi.data import read_data_file
         from coresi.mlem import LM_MLEM
     except ImportError:
+
         global_log.error(
             f"Please install CoReSi (and torch, if not already done) or use another backend.")
         return np.zeros(vsize, dtype=np.float32)
