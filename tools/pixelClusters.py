@@ -1,5 +1,6 @@
 # Functions to process pixelClusters dataframes
-# TODO: duration of pixelHits2pixelClusters() is not linear with number of hits (e.g. 100k 231 sec, 1M 13345 sec)
+# Easy to read, but not performant. See pixelClusters_custom.py for faster clustering.
+# Time of pixelHits2pixelClusters() is not linear with number of hits (e.g. 100k 200 sec, 1M 13000 sec on my machine)
 
 import time
 import pandas as pd
@@ -74,7 +75,7 @@ def pixelHits2pixelClusters(pixelHits, npix, window_ns):
 
     # Initialization
     clusters = []
-    pixelHits = pixelHits.sort_values(by=TOA)  # TODO: is this necessary?
+    pixelHits = pixelHits.sort_values(by=TOA)
     hits_df = pixelHits.copy()
     hits_df.index = range(len(hits_df))  # Ensure integer index
 
