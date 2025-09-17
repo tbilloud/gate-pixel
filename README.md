@@ -30,7 +30,7 @@ Requires:
 Assuming python 3.11 is installed:
 
 ```
-git clone git@github.com:tbilloud/Compton-Camera-TPX3.git && cd Compton-Camera-TPX3 && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && mv venv/lib/python3.11/site-packages/opengate_core/plugins venv/lib/python3.11/site-packages/opengate_core/plugins.bak 
+git clone git@github.com:tbilloud/gate-pixel.git && cd gate-pixel && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && mv venv/lib/python3.11/site-packages/opengate_core/plugins venv/lib/python3.11/site-packages/opengate_core/plugins.bak 
 ```
 
 For Allpix², assuming ROOT is installed and configured (with `source thisroot.sh`):
