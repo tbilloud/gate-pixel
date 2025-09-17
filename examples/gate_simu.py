@@ -11,7 +11,7 @@ um, mm, keV, Bq, ms = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_un
 
 # Set up Gate simulation in a function for use in other examples
 def gate_simu():
-    sim, sim.output_dir = Simulation(), Path("../output")
+    sim, sim.output_dir = Simulation(), Path("output")
     sim.random_engine, sim.random_seed = "MersenneTwister", 1
     sim.visu = False
     sim.verbose_level = 'DEBUG'  # DEBUG for data preview, INFO for algo timing only
