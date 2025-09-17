@@ -185,32 +185,6 @@ def plot_recos(
     napari.run()
 
 
-def scroll_cones_napari(slices, vsize):
-    """
-    Displays 2D cone cross-sections (slices) using Napari. To be used with cone slices at the source location for validation.
-    Compared to valid_psource(plot_seq=True) with matplotlib, this allows for scrolling through the slices manually.
-
-    Parameters:
-    -----------
-    slices : numpy.ndarray
-        A 3D array representing the slices to be visualized.
-    vsize : tuple of int
-        A tuple representing the size of the volume in the format (depth, height, width).
-    """
-
-    try:
-        import napari
-    except ImportError:
-        global_log.warning("Napari is not installed, cannot use plot_reco.")
-        return
-
-    vargs = dict(translate=(-vsize[0] // 2, -vsize[1] // 2),
-                 axis_labels=["cone", "x", "y"])
-    viewer = napari.view_image(slices, **vargs)
-    viewer.axes.visible = True
-    napari.run()
-
-
 def compare_clusters(
         clusters1, clusters2, name_a='A', name_b='B', xlog=False, ylog=False, npix=256,
         energy_bins=None, toa_bins=None, dtoa_bins=None, size_bins=None,

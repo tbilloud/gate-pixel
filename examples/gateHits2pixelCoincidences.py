@@ -25,7 +25,7 @@ if __name__ == "__main__":
     source = sim.source_manager.get_source("source")
     reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01}
 
-    # ######## CONES ##############
+    # ###### COINCIDENCES #########
     coin = gHits2pixelCoincidences(sim.output_dir / hits.output_filename, source.energy.mono)
 
     # ###### RECONSTRUCTION #######

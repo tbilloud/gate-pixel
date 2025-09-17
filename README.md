@@ -33,7 +33,7 @@ Assuming python 3.11 is installed:
 git clone git@github.com:tbilloud/gate-pixel.git && cd gate-pixel && python3.11 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && export GLIBC_TUNABLES=glibc.rtld.optional_static_tls=2000000 && mv venv/lib/python3.11/site-packages/opengate_core/plugins venv/lib/python3.11/site-packages/opengate_core/plugins.bak 
 ```
 
-For Allpix², assuming that dependencies are installed (see below) and ROOT is
+For Allpix², assuming that dependencies are installed (see [5) Optional: Install Allpix2](#5-optional-install-allpix2)) and ROOT is
 configured (with `source thisroot.sh`):
 
 ```
@@ -98,7 +98,7 @@ For PyCharm:
         - In `Working directory`, put `/path/Compton-Camera-TPX3`
         - In `Paths to ".env" files`, put `/path/Compton-Camera-TPX3/.env`
 
-### 5) Optional: Install Allpix²
+### 5) Optional: Install Allpix2
 
 #### Prerequisites Ubuntu
 
@@ -239,45 +239,11 @@ and/or custom functions), also try:
 python3 examples/compare_recos.py
 ```
 
-In main scripts, the first part (code until block 'OFFLINE PROCESSING') is the Gate 10
-simulation.
-Then, several functions are available. Their parameters are documented in the code (
-`tools` sub-directory).
-Step-by-step:
-
-1) Simulate pixel hits:
-
-- from Gate singles with gSingles2pixelHits()
-- from Allpix² output with gHits2allpix2pixelHits()
-
-2) Convert pixel hits to clusters:
-   pixelHits2pixelClusters()
-   There are different ways to cluster hits. One can add a custom clustering function:
-    - add a pixelClusters_custom.py in the `tools` sub-directory
-    - Input dataframes are described in pixelHits.py
-    - Output dataframes should have the same columns as in pixelClusters.py.
-
-3) Identify coincidences:
-
-- from Gate4 hits with gHits2pixelCoincidences()
-- from pixel hits
-
-4) Generate cones from coincidences
-
-- with pixelCoincidences2cones()
-
-5) Check cone intersections from a point source:
-
-- validate_psource() plots cone projections at the source position.
-
-6) Reconstruct 3D image with:
-
-- simple backprojection (cpu or gpu, if available)
-- advanced techniques via CoReSi (not fully implemented yet)
-
-For more information, see the [documentation](doc/readme.md).
-
-### Output
+A script is composed of a Gate simulation and/or 'offline' processing.
+Offline processing include the Allpix² simulation, pixel hit/cluster/coincidence/cone
+processing, and image reconstruction.
+Functions are documented in the [documentation](doc/readme.md) and in their code
+definition (`tools` sub-directory).
 
 By default, output data goes to different folders. Allpix data goes to the 'allpix'
 sub-folder, Gate data to the folder indicared in sim.output_dir (usually just `output`).
@@ -289,15 +255,45 @@ That is because the weighting potential file can be reused, and this only happen
 case the `precise` Allpix configuration is used.
 The subfolder uses the source name and activity
 
-### Plotting
+After the Gate simulation, one can:
 
-Plotting functions using napari:
+1) Simulate pixel hits:
 
-- scroll between cones with scroll_cones_napari()
-- show reconstructed source and detector geometry in 3D with plot_reco(). Does not work
-  on MacOS yet, see [napari/opengate conflict](#napariopengate-conflict) below.
+- from Gate hits with gHits2allpix2pixelHits()
+- from Gate singles with gSingles2pixelHits()
 
-## [napari/opengate conflict]
+2) Cluster pixel hits with pixelHits2pixelClusters()
+
+This function is easy to understand but not fast. Also, there are different way to make
+clusters. One can add a custom function:
+
+- Add a file such as pixelClusters_custom.py in the `tools` sub-directory
+- Write a function taking a dataframe as input with the same columns as in pixelHits.py
+- The output dataframe should have the same columns as in pixelClusters.py.
+
+3) Identify coincidences:
+
+- from Gate hits with gHits2pixelCoincidences()
+- from clusters with pixelClusters2pixelCoincidences()
+
+4) Generate cones from coincidences with pixelCoincidences2cones()
+
+5) Check cone intersections from a point source with validate_psource()
+
+The function needs the source position as input. It draws a point at its location on top
+of a reconstruction slice.
+
+6) Reconstruct 3D image with:
+
+- simple back-projection (cpu or gpu, if available)
+- advanced techniques via CoReSi (WIP)
+
+7) Display a 3D image with plot_reco()
+
+Or multiple images side-by-side with plot_recos().
+On macOS, these functions cannot yet be used in the same script as Gate (see [napari/opengate conflict](#napariopengate-conflict)).
+
+## [napari/opengate conflict](#napariopengate-conflict)
 
 Napari and OpenGate use the same QT backends (PyQt5), which causes conflicts.
 Using Qt-based code (e.g. napari) and gate in the same script leads to warnings and
