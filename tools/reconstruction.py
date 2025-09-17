@@ -57,9 +57,9 @@ def reconstruct(pixelCoincidences, vpitch, vsize, cone_width=0.01, log=True,
         vol = reco_bp_torch(pixelCoincidences, vpitch, vsize, cone_width)
     elif method == "numpy":
         vol = reco_bp_numpy(pixelCoincidences, vpitch, vsize, cone_width)
-    elif method == "custom":
-        from tools.reconstruction_custom import reco_custom
-        vol = reco_custom(pixelCoincidences, vpitch, vsize, cone_width)
+    # elif method == "custom":
+    #     from tools.reconstruction_custom import reco_custom
+    #     vol = reco_custom(pixelCoincidences, vpitch, vsize, cone_width)
     else:
         raise ValueError(f"Unknown method: {method}")
 
