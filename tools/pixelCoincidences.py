@@ -406,7 +406,7 @@ def local2global(pixelCoincidences, translation, rotation, npix, pitch, thicknes
     return df_copy
 
 
-def filter_pixel_coincidences(pixelCoincidences, energies_MeV, tol_MeV):
+def select_pixelCoincidences_energies(pixelCoincidences, energies_MeV, tol_MeV):
     energies_keV = np.array(energies_MeV) * 1000
     tol_keV = tol_MeV * 1000
     energy_sum = pixelCoincidences['Energy (keV)_1'] + pixelCoincidences['Energy (keV)_2']

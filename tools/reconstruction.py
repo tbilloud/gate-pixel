@@ -9,7 +9,7 @@ import matplotlib.colors
 from matplotlib.gridspec import GridSpec
 from scipy.optimize import curve_fit
 
-from tools.pixelCoincidences import filter_pixel_coincidences
+from tools.pixelCoincidences import select_pixelCoincidences_energies
 from tools.utils import get_stop_string
 from tools.pixelHits import EVENTID
 from tools.pixelCones import APEX_X, APEX_Y, APEX_Z, DIRECTION_X, DIRECTION_Y, \
@@ -56,7 +56,7 @@ def reconstruct(pixelCoincidences, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
                              **kwargs)
     else:
         if energies_MeV != -1:
-            pixelCoincidences = filter_pixel_coincidences(pixelCoincidences, energies_MeV, tol_MeV)
+            pixelCoincidences = select_pixelCoincidences_energies(pixelCoincidences, energies_MeV, tol_MeV)
         cones = pixelCoincidences2cones(pixelCoincidences, log=False)
         if method == "cupy":
             vol = reco_bp_cupy(cones, vpitch, vsize, cone_width)
