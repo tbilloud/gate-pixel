@@ -79,6 +79,7 @@ def plot_energies(
     plot_histogram(axes[1], clusters_list, title='Pixel Clusters',
                    xlab=False if CCevents_list else True)
     if CCevents_list:
+        CCevents_list = [df.copy() for df in CCevents_list]
         for df in CCevents_list:
             df[ENERGY_keV] = df['Energy (keV)_1'] + df['Energy (keV)_2']
         plot_histogram(axes[2], CCevents_list, title='CCevents sum', xlab=True)
