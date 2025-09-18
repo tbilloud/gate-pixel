@@ -294,8 +294,26 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
     return df
 
 
-def pixelClusters2CCevents(pixelClusters, thickness_mm, charge_speed_mm_ns,
-                           coincidence_window_ns=100):
+def pixelClusters2CCevents(pixelClusters, thick, speed, twindow):
+    """
+    Converts a DataFrame of pixel clusters into Compton camera events (CCevents) by grouping clusters
+    based on their time-of-arrival and reconstructing the positions and energies of Compton and photoelectric interactions.
+    Make sure that units are consistent in the inputs.
+
+    Args:
+        pixelClusters (pandas.DataFrame): DataFrame containing pixelClusters.
+        thick (float): Sensor thickness (unit must be consistent with charge_speed).
+        speed (float): Speed at which charge propagates through the sensor (unit must be consistent with thickness).
+        twindow (float, optional): time window for coincident clusters (unit must be consistent with the TOA column of pixelClusters, i.e. ns).
+
+    Returns:
+        pandas.DataFrame: DataFrame of CCevents, each corresponding to a pair of clusters interpreted as a Compton and a photoelectric interaction.
+        The output includes event ID, interaction types, 3D positions, and energies for both interactions.
+
+    Notes:
+        - Only events with exactly two clusters within the time window are considered.
+        - The z-coordinate is reconstructed using the time difference and charge propagation speed.
+    """
     stime = time.time()
     global_log.info(f"Offline [CCevents]: START")
 
@@ -314,7 +332,7 @@ def pixelClusters2CCevents(pixelClusters, thickness_mm, charge_speed_mm_ns,
     last_time = None
 
     for i, t in enumerate(pixelClusters_copy[TOA]):
-        if last_time is None or (t - last_time) > coincidence_window_ns:
+        if last_time is None or (t - last_time) > twindow:
             current_event += 1
         clustering_ids[i] = current_event
         last_time = t
@@ -344,8 +362,8 @@ def pixelClusters2CCevents(pixelClusters, thickness_mm, charge_speed_mm_ns,
             continue
 
         # 2) Calculate depth difference
-        dZ_mm = charge_speed_mm_ns * (cl_compton[TOA] - cl_photoel[TOA])
-        dZ_frac = dZ_mm / thickness_mm
+        dZ_mm = speed * (cl_compton[TOA] - cl_photoel[TOA])
+        dZ_frac = dZ_mm / thick
 
         # 3) Calculate absolute depth of Compton interaction
         z_compton = 0  # middle of sensor (in local fractional unit)

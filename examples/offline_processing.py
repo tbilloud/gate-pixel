@@ -14,24 +14,15 @@ from tools.utils_plot import plot_energies
 sim = copy_sim_from_script('example.py')
 sensor = sim.volume_manager.get_volume("sensor")
 source = sim.source_manager.get_source("source")
+thick = sensor.size[2]
+file_sgl = sim.output_dir / sim.actor_manager.get_actor("Singles").output_filename
 npix, pitch = 256, 0.055
-
-coord_transform = dict(translation=sensor.translation, rotation=sensor.rotation,
-                       npix=npix, pitch=pitch, thickness=sensor.size[2])
+spd = charge_speed_mm_ns(mobility_cm2_Vs=1000, bias_V=-500, thick_mm=thick)
 
 # SINGLES
-spd = charge_speed_mm_ns(mobility_cm2_Vs=1000, bias_V=-500, thick_mm=sensor.size[2])
-hits_single = singles2pixelHits('output/gateSingles_b.root',
-                                charge_speed_mm_ns=spd,
-                                thickness_mm=sensor.size[2],
-                                actor_name='Singles_b')
-clstr_single = pixelHits2pixelClusters(hits_single, npix=npix, window_ns=100)
-coin_single = pixelClusters2CCevents(clstr_single,
-                                              source_MeV=source.energy.mono,
-                                              thickness_mm=sensor.size[2],
-                                              charge_speed_mm_ns=spd,
-                                              )
-coin_single = local2global(coin_single, **coord_transform)
+hits_sgl = singles2pixelHits(file_sgl, speed=spd, thick=thick, actor='Singles')
+clstr_sgl = pixelHits2pixelClusters(hits_sgl, npix=npix, window_ns=100)
+evt_sgl = pixelClusters2CCevents(clstr_sgl, thick=thick, speed=spd, twindow=100)
 
 # ALLPIX
 hits_allpix = gHits2allpix2pixelHits(sim,
@@ -45,18 +36,13 @@ hits_allpix = gHits2allpix2pixelHits(sim,
                                      charge_per_step=10,
                                      )
 clstr_allpix = pixelHits2pixelClusters(hits_allpix, npix=npix, window_ns=100)
-coin_allpix = pixelClusters2CCevents(clstr_allpix,
-                                              source_MeV=source.energy.mono,
-                                              thickness_mm=sensor.size[2],
-                                              charge_speed_mm_ns=spd,
-                                              )
-coin_allpix = local2global(coin_allpix, **coord_transform)
+evt_allp = pixelClusters2CCevents(clstr_allpix, thick=thick, speed=spd, twindow=100)
 
-# PLOT
+# ENERGY SPECTRA
 plot_energies(max_keV=160,
-              hits_list=[hits_single, hits_allpix],
-              clusters_list=[clstr_single, clstr_allpix],
-              CCevents_list=[coin_single, coin_allpix],
+              hits_list=[hits_sgl, hits_allpix],
+              clusters_list=[clstr_sgl, clstr_allpix],
+              CCevents_list=[evt_sgl, evt_allp],
               names=['singles', 'allpix'],
               alphas=[0.5, 0.5, 0.5])
 

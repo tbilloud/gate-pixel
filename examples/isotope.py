@@ -91,10 +91,7 @@ if __name__ == "__main__":
 
     # CCevents
     spd = charge_speed_mm_ns(mobility_cm2_Vs=mobility_e, bias_V=bias, thick_mm=thick)
-    coin = pixelClusters2CCevents(pixelClusters,
-                                           thickness_mm=thick,
-                                           charge_speed_mm_ns=spd,
-                                           )
+    coin = pixelClusters2CCevents(pixelClusters, thick=thick, speed=spd, twindow=100)
     coin = local2global(coin, sensor.translation, sensor.rotation, npix, pitch, thick)
 
     # ################################ COMPARISON  #####################################

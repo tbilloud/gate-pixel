@@ -404,22 +404,6 @@ def get_global_log():
     global_log.setLevel(logging.DEBUG)
     return global_log
 
-def set_actor_single(sim, name, attribute, method, fwhm_MeV,sname,hname):
-    singles = sim.add_actor("DigitizerReadoutActor", "Singles")
-    singles.authorize_repeated_volumes = True
-    singles.discretize_volume = sname
-    singles.input_digi_collection = hname
-    singles.policy = "EnergyWeightedCentroidPosition"
-    singles.output_filename = 'gateSingles.root'
-    singles_b = sim.add_actor("DigitizerBlurringActor", name)
-    singles_b.authorize_repeated_volumes = True
-    singles_b.input_digi_collection = singles.name
-    singles_b.output_filename = 'gateSingles_blur.root'
-    singles_b.blur_attribute = attribute
-    singles_b.blur_method = method
-    singles_b.blur_fwhm = fwhm_MeV * MeV
-    return singles_b
-
 
 def run_multi(sim, hit_actor, stat_actor):
     """

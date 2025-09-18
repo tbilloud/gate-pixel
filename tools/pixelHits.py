@@ -18,6 +18,7 @@ try:
     from opengate.logger import global_log
 except ImportError:
     import logging
+
     global_log = logging.getLogger("dummy")
     global_log.addHandler(logging.NullHandler())
 
@@ -26,17 +27,31 @@ PIXEL_ID = 'PixelID (int16)'
 TOA = 'ToA (ns)'
 ENERGY_keV = 'Energy (keV)'
 TOT = 'ToT'
-pixelHits_columns = [PIXEL_ID, TOA, ENERGY_keV] # ADD / REMOVE columns as needed
-EVENTID = 'EventID' # optional, used for simulated hits only
+pixelHits_columns = [PIXEL_ID, TOA, ENERGY_keV]  # ADD / REMOVE columns as needed
+EVENTID = 'EventID'  # optional, used for simulated hits only
 
 
-def singles2pixelHits(file_path, charge_speed_mm_ns, thickness_mm, actor_name='Singles', nrows=None):
+def singles2pixelHits(file_path, speed, thick, actor='Singles', nrows=None):
+    """
+    Converts a ROOT file containing Gate singles into a DataFrame of pixelHits.
+
+    Args:
+        file_path (str): Path to the Gate's ROOT file containing singles.
+        speed (float): Charge propagation speed in the sensor (unit must be consistent with the 'thick' parameter).
+        thick (float): Sensor thickness (unit must be consistent with the 'speed' parameter).
+        actor (str, optional): Name of the Gate actor used to get singles. The actor can be e.g. DigitizerReadoutActor or DigitizerBlurringActor, but its name is user defined. Defaults to 'Singles'.
+        nrows (int, optional): Maximum number of rows to read from the file. If None, reads all rows.
+
+    Returns:
+        pandas.DataFrame: DataFrame containing pixelHits.
+    """
     if not os.path.isfile(file_path):
-        sys.exit(f"Offline [pixelHits]: {file_path} does not exist, probably no hit produced...")
+        sys.exit(
+            f"Offline [pixelHits]: {file_path} does not exist, probably no hit produced...")
     else:
         global_log.info(f"Offline [pixelHits]: START")
     stime = time.time()
-    singles = uproot.open(file_path)[actor_name].arrays(library='pd', entry_stop=nrows)
+    singles = uproot.open(file_path)[actor].arrays(library='pd', entry_stop=nrows)
     global_log.debug(f"Input {file_path}, {len(singles)} entries")
     singles['HitUniqueVolumeID'] = singles['HitUniqueVolumeID'].astype(
         str).str.replace(r'0_', '', regex=True)
@@ -45,7 +60,7 @@ def singles2pixelHits(file_path, charge_speed_mm_ns, thickness_mm, actor_name='S
     singles[PIXEL_ID] = singles[PIXEL_ID].astype(int)
     singles.rename(columns={'TotalEnergyDeposit': ENERGY_keV}, inplace=True)
     singles[ENERGY_keV] = singles[ENERGY_keV] * 1e3  # Convert MeV to keV
-    singles['GlobalTime'] += (-singles['PostPositionLocal_Z'] + thickness_mm/2) / charge_speed_mm_ns
+    singles['GlobalTime'] += (-singles['PostPositionLocal_Z'] + thick / 2) / speed
     singles.rename(columns={'GlobalTime': TOA}, inplace=True)
     singles[TOT] = singles[ENERGY_keV] * 1e3  # TODO temporary
     singles = singles[[EVENTID] + pixelHits_columns]
@@ -188,7 +203,6 @@ def pixelHits2burdaman(pixelHits_df, out_path):
 
 # TODO adapt to different simulation chains
 def allpixTxt2pixelHit(text_file, n_pixels=256):
-
     stime = time.time()
     global_log.info(f"Offline [pixelHits]: START")
     if os.path.isfile(text_file.with_suffix('.txt')):
@@ -233,7 +247,8 @@ def allpixTxt2pixelHit(text_file, n_pixels=256):
 
     df = pd.DataFrame(rows, columns=[EVENTID] + pixelHits_columns)
     if len(df) == 0:
-        global_log.error(f"Offline [pixelHits]: Empty pixel hits dataframe, probably no hit produced.")
+        global_log.error(
+            f"Offline [pixelHits]: Empty pixel hits dataframe, probably no hit produced.")
     global_log_debug_df(df)
     global_log.info(f"Offline [pixelHits]: {get_stop_string(stime)}")
     return df
@@ -277,7 +292,8 @@ def pixet2pixelHit(t3pa_file, calib, chipID=None, nrows=None):
 
     if calib.endswith('xml'):
         global_log.info(f"Offline [pixelHits]: Using XML file for calibration")
-        global_log.error("Reading calibration from XML seems wrong with current decoding")
+        global_log.error(
+            "Reading calibration from XML seems wrong with current decoding")
         tree = ET.parse(calib)
         root = tree.getroot()
         chip = root.find(chipID)
@@ -330,10 +346,12 @@ def pixet2pixelHit(t3pa_file, calib, chipID=None, nrows=None):
     df = df.rename(columns={'Matrix Index': 'PixelID (int16)'})
 
     if len(df) == 0:
-        global_log.error(f"Offline [pixelHits]: Empty pixel hits dataframe, probably no hit produced.")
+        global_log.error(
+            f"Offline [pixelHits]: Empty pixel hits dataframe, probably no hit produced.")
     global_log_debug_df(df)
     global_log.info(f"Offline [pixelHits]: {get_stop_string(stime)}")
     return df
+
 
 def remove_edge_pixels(df, n_pixels=256, edge_thickness=1):
     """

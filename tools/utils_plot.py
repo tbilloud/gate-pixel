@@ -81,7 +81,7 @@ def plot_energies(
     if CCevents_list:
         for df in CCevents_list:
             df[ENERGY_keV] = df['Energy (keV)_1'] + df['Energy (keV)_2']
-        plot_histogram(axes[2], CCevents_list, title='Cluster Pairs', xlab=True)
+        plot_histogram(axes[2], CCevents_list, title='CCevents sum', xlab=True)
 
     if output_filename:
         fig.savefig(output_filename, dpi=300, bbox_inches='tight')
