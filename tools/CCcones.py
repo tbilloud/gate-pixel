@@ -6,7 +6,7 @@ import pandas
 import pandas as pd
 import uproot
 
-from tools.pixelCoincidences import global_log
+from tools.CCevents import global_log
 from tools.pixelHits import EVENTID
 from tools.utils import get_stop_string, global_log_debug_df, \
     localFractional2globalCoordinates, localFractional2globalVector, metric_num
@@ -18,25 +18,25 @@ COS = 'cosT'
 ERROR = 'error'
 
 
-def pixelCoincidences2cones(pixelCoincidences, log = False):
+def CCevents2CCcones(CCevents, log = False):
     if log:
         global_log.info(f"Offline [cones]: START")
     stime = time.time()
 
-    if not len(pixelCoincidences):
-        global_log.error(f"Empty input (no coincidence in dataframe).")
+    if not len(CCevents):
+        global_log.error(f"Empty input.")
         global_log.info(f"Offline [cones]: {get_stop_string(stime)}")
         return pandas.DataFrame()
     else:
-        global_log.debug(f"Input: {len(pixelCoincidences)} pixel coincidences")
+        global_log.debug(f"Input: {len(CCevents)} entries")
 
-    pos_compton = pixelCoincidences[
+    pos_compton = CCevents[
         ['PositionX_1', 'PositionY_1', 'PositionZ_1']].to_numpy()
-    pos_photoel = pixelCoincidences[
+    pos_photoel = CCevents[
         ['PositionX_2', 'PositionY_2', 'PositionZ_2']].to_numpy()
-    E1_keV = pixelCoincidences['Energy (keV)_1'].to_numpy()
-    E2_keV = pixelCoincidences['Energy (keV)_2'].to_numpy()
-    eventid = pixelCoincidences['evt_1'].to_numpy()
+    E1_keV = CCevents['Energy (keV)_1'].to_numpy()
+    E2_keV = CCevents['Energy (keV)_2'].to_numpy()
+    eventid = CCevents['evt_1'].to_numpy()
 
     # Compute direction vectors
     direction = pos_compton - pos_photoel

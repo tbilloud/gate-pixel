@@ -11,8 +11,8 @@ from tools.utils_opengate import get_isotope_data
 from tools.reconstruction import valid_psource
 from tools.utils_plot import plot_energies
 from tools.pixelClusters import *
-from tools.pixelCoincidences import pixelClusters2pixelCoincidences, local2global, \
-    gHits2pixelCoincidences
+from tools.CCevents import pixelClusters2CCevents, local2global, \
+    gHits2CCevents
 
 um, mm, keV, Bq, ms = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_units.ms
 
@@ -64,11 +64,11 @@ if __name__ == "__main__":
     # For Lu177
     p_keV = 208.366
     source_str = 'Hf177[321.316]_' + str(p_keV)
-    coin_ref = gHits2pixelCoincidences(ghits_file, source_MeV=source_str)
+    coin_ref = gHits2CCevents(ghits_file, source_MeV=source_str)
     # For In111
     # p_keV = 245.390
     # source_str ='Cd111[245.390]_' + str(p_keV)
-    # cones_ref = gHits2pixelCoincidences(ghits_file, source_MeV=source_str)
+    # cones_ref = gHits2CCevents(ghits_file, source_MeV=source_str)
 
     # ################################ ALLPIX  #########################################
 
@@ -89,9 +89,9 @@ if __name__ == "__main__":
     # PIXEL CLUSTERS
     pixelClusters = pixelHits2pixelClusters(pixelHits, npix=npix, window_ns=100)
 
-    # PIXEL COINCIDENCES
+    # CCevents
     spd = charge_speed_mm_ns(mobility_cm2_Vs=mobility_e, bias_V=bias, thick_mm=thick)
-    coin = pixelClusters2pixelCoincidences(pixelClusters,
+    coin = pixelClusters2CCevents(pixelClusters,
                                            thickness_mm=thick,
                                            charge_speed_mm_ns=spd,
                                            )
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     # ENERGY HISTOGRAMS
     plot_energies(max_keV=300, hits_list=[pixelHits],
                   clusters_list=[pixelClusters],
-                  coincidences_list=[coin])
+                  CCevents_list=[coin])
 
     # CONE VALIDATION
     reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01}

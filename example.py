@@ -1,7 +1,7 @@
 # Shows how to:
 # - simulate Timepix3 response with Allpix2
 # - cluster Timepix3 hits
-# - identify coincident clusters
+# - identify Compton camera events
 # - reconstruct the source position
 # - compare with Gate's blurred singles
 
@@ -9,8 +9,8 @@ from opengate.utility import g4_units
 from examples.gate_simu import gate_simu
 from tools.pixelHits import singles2pixelHits
 from tools.reconstruction import valid_psource
-from tools.pixelCoincidences import gHits2pixelCoincidences_prototype, local2global, \
-    pixelClusters2pixelCoincidences
+from tools.CCevents import gHits2CCevents_prototype, local2global, \
+    pixelClusters2CCevents
 from tools.utils import charge_speed_mm_ns
 from tools.allpix import gHits2allpix2pixelHits
 from tools.pixelClusters import pixelHits2pixelClusters
@@ -56,7 +56,7 @@ if __name__ == "__main__":
                            npix=npix, pitch=pitch, thickness=thick)
 
     # ######## REFERENCE ##############
-    coinc_ref = gHits2pixelCoincidences_prototype(sim.output_dir / hits.output_filename,
+    coinc_ref = gHits2CCevents_prototype(sim.output_dir / hits.output_filename,
                                                   source.energy.mono)
 
     # #########  SINGLES ##############
@@ -65,7 +65,7 @@ if __name__ == "__main__":
                                     thickness_mm=thick,
                                     actor_name='Singles_b')
     clstr_single = pixelHits2pixelClusters(hits_single, npix=npix, window_ns=100)
-    coin_single = pixelClusters2pixelCoincidences(clstr_single,
+    coin_single = pixelClusters2CCevents(clstr_single,
                                                   thickness_mm=thick,
                                                   charge_speed_mm_ns=spd,
                                                   )
@@ -85,7 +85,7 @@ if __name__ == "__main__":
                                          charge_per_step=10,  # more speeds Allpix up
                                          )
     clstr_allpix = pixelHits2pixelClusters(hits_allpix, npix=npix, window_ns=100)
-    coin_allpix = pixelClusters2pixelCoincidences(clstr_allpix,
+    coin_allpix = pixelClusters2CCevents(clstr_allpix,
                                                   thickness_mm=thick,
                                                   charge_speed_mm_ns=spd,
                                                   )
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     plot_energies(max_keV=160,
                   hits_list=[hits_single, hits_allpix],
                   clusters_list=[clstr_single, clstr_allpix],
-                  coincidences_list=[coin_single, coin_allpix],
+                  CCevents_list=[coin_single, coin_allpix],
                   names=['singles', 'allpix'],
                   alphas=[0.5, 0.5, 0.5])
 

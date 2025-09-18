@@ -10,7 +10,7 @@ def plot_energies(
         min_keV=0,
         hits_list=None,
         clusters_list=None,
-        coincidences_list=None,
+        CCevents_list=None,
         names=None,
         colors=None,
         alphas=None,
@@ -26,7 +26,7 @@ def plot_energies(
         max_keV (int): Maximum energy (keV) for histogram range and bins.
         min_keV (int): Minimum energy (keV) for histogram range and bins.
         hits_list (list): List of DataFrames for pixel hits.
-        coincidences_list (list): List of DataFrames for coincidences.
+        CCevents_list (list): List of DataFrames for Compton camera events.
         names (list): List of labels for each dataset.
         colors (list): List of colors for each dataset.
         alphas (list): List of alpha values for each dataset.
@@ -45,7 +45,7 @@ def plot_energies(
     if alphas is None:
         alphas = [0.7] * n
 
-    nr = 3 if coincidences_list else 2
+    nr = 3 if CCevents_list else 2
     fig, axes = plt.subplots(nrows=nr, ncols=1, figsize=(8, 10), sharex=True)
 
     def plot_histogram(ax, data_list, title, xlab=False):
@@ -77,11 +77,11 @@ def plot_energies(
 
     plot_histogram(axes[0], hits_list, title='Pixel Hits')
     plot_histogram(axes[1], clusters_list, title='Pixel Clusters',
-                   xlab=False if coincidences_list else True)
-    if coincidences_list:
-        for df in coincidences_list:
+                   xlab=False if CCevents_list else True)
+    if CCevents_list:
+        for df in CCevents_list:
             df[ENERGY_keV] = df['Energy (keV)_1'] + df['Energy (keV)_2']
-        plot_histogram(axes[2], coincidences_list, title='Cluster Pairs', xlab=True)
+        plot_histogram(axes[2], CCevents_list, title='Cluster Pairs', xlab=True)
 
     if output_filename:
         fig.savefig(output_filename, dpi=300, bbox_inches='tight')

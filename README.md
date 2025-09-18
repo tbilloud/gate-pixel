@@ -5,7 +5,7 @@ A single python script to:
 - Simulate gamma sources and interactions via Gate 10 / Geant4
 - Simulate the Timepix3 detector response via Allpix2
 - Process Timepix3 data, either simulated or measured
-- Generate coincident events & cones
+- Generate Compton camera events & cones
 - Reconstruct the source via basic back-projection or CoReSi
 - Validate cone intersections in case of point sources
 - Visualize 3D images
@@ -193,7 +193,7 @@ pip install torch
 This will create a `coresi` sub-directory, which will contain:
 
 - a `coresi` sub-directory with the CoReSi source code
-- files containing coincident events, which are used as input when running CoReSi (see
+- files containing Compton camera events, which are used as input when running CoReSi (see
   TODOs)
 
 ## [Installation without simulation packages](#install-offline)
@@ -243,7 +243,7 @@ python3 examples/compare_recos.py
 ```
 
 A script is composed of a Gate simulation and/or 'offline' processing.
-Offline processing include the Allpix² simulation, pixel hit/cluster/coincidence/cone
+Offline processing include the Allpix² simulation, pixel hit/cluster/event/cone
 processing, and image reconstruction.
 Functions are documented in the [documentation](doc/readme.md) and in their code
 definition (`tools` sub-directory).
@@ -270,12 +270,12 @@ clusters. One can add a custom function:
 - Write a function taking a dataframe as input with the same columns as in pixelHits.py
 - The output dataframe should have the same columns as in pixelClusters.py.
 
-3) Identify coincidences:
+3) Identify Compton camera events (CCevents):
 
-- from Gate hits with gHits2pixelCoincidences()
-- from clusters with pixelClusters2pixelCoincidences()
+- from Gate hits with gHits2CCevents()
+- from clusters with pixelClusters2CCevents()
 
-4) Generate cones from coincidences with pixelCoincidences2cones()
+4) Generate cones from CCevents with CCevents2CCcones()
 
 5) Check cone intersections from a point source with validate_psource()
 

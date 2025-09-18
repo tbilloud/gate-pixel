@@ -2,7 +2,7 @@
 # Based on output from the example.py -> it needs to be run first
 # Plots are the same as in example.py if the Allpix/clustering parameters are the same
 
-from tools.pixelCoincidences import pixelClusters2pixelCoincidences, local2global
+from tools.CCevents import pixelClusters2CCevents, local2global
 from tools.pixelHits import singles2pixelHits
 from tools.utils import charge_speed_mm_ns
 from tools.utils_opengate import copy_sim_from_script
@@ -26,7 +26,7 @@ hits_single = singles2pixelHits('output/gateSingles_b.root',
                                 thickness_mm=sensor.size[2],
                                 actor_name='Singles_b')
 clstr_single = pixelHits2pixelClusters(hits_single, npix=npix, window_ns=100)
-coin_single = pixelClusters2pixelCoincidences(clstr_single,
+coin_single = pixelClusters2CCevents(clstr_single,
                                               source_MeV=source.energy.mono,
                                               thickness_mm=sensor.size[2],
                                               charge_speed_mm_ns=spd,
@@ -45,7 +45,7 @@ hits_allpix = gHits2allpix2pixelHits(sim,
                                      charge_per_step=10,
                                      )
 clstr_allpix = pixelHits2pixelClusters(hits_allpix, npix=npix, window_ns=100)
-coin_allpix = pixelClusters2pixelCoincidences(clstr_allpix,
+coin_allpix = pixelClusters2CCevents(clstr_allpix,
                                               source_MeV=source.energy.mono,
                                               thickness_mm=sensor.size[2],
                                               charge_speed_mm_ns=spd,
@@ -56,7 +56,7 @@ coin_allpix = local2global(coin_allpix, **coord_transform)
 plot_energies(max_keV=160,
               hits_list=[hits_single, hits_allpix],
               clusters_list=[clstr_single, clstr_allpix],
-              coincidences_list=[coin_single, coin_allpix],
+              CCevents_list=[coin_single, coin_allpix],
               names=['singles', 'allpix'],
               alphas=[0.5, 0.5, 0.5])
 

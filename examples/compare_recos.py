@@ -6,7 +6,7 @@ from pathlib import Path
 from opengate.utility import g4_units
 
 from examples.gate_simu import gate_simu
-from tools.pixelCoincidences import gHits2pixelCoincidences
+from tools.CCevents import gHits2CCevents
 from tools.reconstruction import valid_psource
 
 um, mm, keV, MeV, deg, Bq, ms, sec = g4_units.um, g4_units.mm, g4_units.keV, g4_units.MeV, g4_units.deg, g4_units.Bq, g4_units.ms, g4_units.s
@@ -26,24 +26,24 @@ if __name__ == "__main__":
     sensor = sim.volume_manager.get_volume("sensor")
     hits_path = Path(sim.output_dir) / hits.output_filename
     sp = source.position.translation
-    pixelCoincidences = gHits2pixelCoincidences(hits_path, source.energy.mono)
+    CCevents = gHits2CCevents(hits_path, source.energy.mono)
     reco_params = {'vpitch': 0.2, 'vsize': [256, 256, 256], 'cone_width': 0.01,
                    'energies_MeV': [source.energy.mono], 'tol_MeV': 0.01}
     tol_MeV = 0.01,
     # #################### NUMPY ##########################
-    valid_psource(pixelCoincidences, **reco_params, src_pos=sp, method='numpy')
+    valid_psource(CCevents, **reco_params, src_pos=sp, method='numpy')
 
     # ##################### CUPY ##########################
-    valid_psource(pixelCoincidences, **reco_params, src_pos=sp, method='cupy')
+    valid_psource(CCevents, **reco_params, src_pos=sp, method='cupy')
 
     # ################### PYTORCH #########################
-    valid_psource(pixelCoincidences, **reco_params, src_pos=sp, method='torch')
+    valid_psource(CCevents, **reco_params, src_pos=sp, method='torch')
 
     # #################### CoReSi #########################
     # WARNING: with coresi, SENSOR CANNOT BE IN VOLUME !
     vsize_coresi = [reco_params['vsize'][0], reco_params['vsize'][1], 90]
     reco_params_coresi = {**reco_params, 'vsize': vsize_coresi}
-    valid_psource(pixelCoincidences, **reco_params_coresi, src_pos=sp, method='coresi',
+    valid_psource(CCevents, **reco_params_coresi, src_pos=sp, method='coresi',
                   sensor_size=sensor.size,
                   sensor_position=sensor.translation,
                   sensor_rotation=sensor.rotation,
@@ -55,4 +55,4 @@ if __name__ == "__main__":
     # 1) give it the same input parameters, plus, if needed, extras as kwargs (as coresi)
     # 2) put it in a separate python file in the tools subdirectory
     # 3) update the reconstruct() function in tools/reconstruction.py as shown with the 3 lines starting with `elif method == "custom"`
-    # valid_psource(pixelCoincidences, **reco_params, src_pos=sp, method='custom')
+    # valid_psource(CCevents, **reco_params, src_pos=sp, method='custom')

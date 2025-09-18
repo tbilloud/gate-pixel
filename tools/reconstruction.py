@@ -9,11 +9,11 @@ import matplotlib.colors
 from matplotlib.gridspec import GridSpec
 from scipy.optimize import curve_fit
 
-from tools.pixelCoincidences import select_pixelCoincidences_energies
+from tools.CCevents import select_CCevents_energies
 from tools.utils import get_stop_string
 from tools.pixelHits import EVENTID
-from tools.pixelCones import APEX_X, APEX_Y, APEX_Z, DIRECTION_X, DIRECTION_Y, \
-    DIRECTION_Z, COS, pixelCoincidences2cones
+from tools.CCcones import APEX_X, APEX_Y, APEX_Z, DIRECTION_X, DIRECTION_Y, \
+    DIRECTION_Z, COS, CCevents2CCcones
 
 try:
     from opengate.logger import global_log
@@ -24,14 +24,14 @@ except ImportError:
     global_log.addHandler(logging.NullHandler())
 
 
-def reconstruct(pixelCoincidences, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
+def reconstruct(CCevents, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
                 cone_width=0.01, log=True, method="numpy",
                 **kwargs):
     """
     Unified reconstruction interface.
 
      Args:
-        pixelCoincidences (pandas.DataFrame): DataFrame containing the cone information used for validation.
+        CCevents (pandas.DataFrame): DataFrame containing the cone information used for validation.
         vpitch (float): The voxel size or pitch of the volume.
         vsize (tuple[int, int, int]): The size of the volume in voxels (X, Y, Z).
         cone_width (float): cone width (the larger the value the thicker the cones).
@@ -41,7 +41,7 @@ def reconstruct(pixelCoincidences, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
         tol_MeV: (float): energy tolerance in MeV
         kwargs: extra parameters for CoReSi:
             sensor_size (list[float])
-            sensor_position (list[float]): must be same coord system as pixelCoincidences
+            sensor_position (list[float]): must be same coord system as CCevents
             sensor_rotation (3×3 rotation matrix) TODO not implemented yet
     """
 
@@ -50,14 +50,14 @@ def reconstruct(pixelCoincidences, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
     stime = time.time()
 
     if method == "coresi":
-        vol = reco_bp_coresi(pixelCoincidences, vpitch=vpitch, vsize=vsize,
+        vol = reco_bp_coresi(CCevents, vpitch=vpitch, vsize=vsize,
                              cone_width=cone_width * 300, energies_MeV=energies_MeV,
                              tol_MeV=tol_MeV,
                              **kwargs)
     else:
         if energies_MeV != -1:
-            pixelCoincidences = select_pixelCoincidences_energies(pixelCoincidences, energies_MeV, tol_MeV)
-        cones = pixelCoincidences2cones(pixelCoincidences, log=False)
+            CCevents = select_CCevents_energies(CCevents, energies_MeV, tol_MeV)
+        cones = CCevents2CCcones(CCevents, log=False)
         if method == "cupy":
             vol = reco_bp_cupy(cones, vpitch, vsize, cone_width)
         elif method == "torch":
@@ -66,7 +66,7 @@ def reconstruct(pixelCoincidences, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
             vol = reco_bp_numpy(cones, vpitch, vsize, cone_width)
         # elif method == "custom":
         #     from tools.reconstruction_custom import reco_custom
-        #     vol = reco_custom(pixelCoincidences, vpitch, vsize, cone_width)
+        #     vol = reco_custom(CCevents, vpitch, vsize, cone_width)
         else:
             raise ValueError(f"Unknown method: {method}")
 
@@ -183,7 +183,7 @@ def reco_bp_torch(cones, vpitch, vsize, cone_width=0.01):
     return volume.cpu().numpy()
 
 
-def reco_bp_coresi(pixelCoincidences, vpitch, vsize, cone_width, sensor_size,
+def reco_bp_coresi(CCevents, vpitch, vsize, cone_width, sensor_size,
                    sensor_position,
                    sensor_rotation, energies_MeV, tol_MeV):
     try:
@@ -197,15 +197,15 @@ def reco_bp_coresi(pixelCoincidences, vpitch, vsize, cone_width, sensor_size,
         return np.zeros(vsize, dtype=np.float32)
     fname = 'coresi/coresi_temp.dat'
 
-    if EVENTID in pixelCoincidences.columns:
-        pixelCoincidences = pixelCoincidences.drop(columns=[EVENTID])
+    if EVENTID in CCevents.columns:
+        CCevents = CCevents.drop(columns=[EVENTID])
 
     # In case there's only one cone, it might be given as a pandas Series...
-    if isinstance(pixelCoincidences, pandas.Series):
-        pixelCoincidences = pixelCoincidences.to_frame().T
+    if isinstance(CCevents, pandas.Series):
+        CCevents = CCevents.to_frame().T
 
     # Store coresi events since read_data_file requires a file
-    pixelCoincidences.to_csv(fname, index=False, sep='\t', header=False)
+    CCevents.to_csv(fname, index=False, sep='\t', header=False)
 
     s = [x / 10 for x in sensor_size]  # convert to cm
     t = [0, 0, 0]  # center of the sensor
@@ -271,7 +271,7 @@ def reco_bp_coresi(pixelCoincidences, vpitch, vsize, cone_width, sensor_size,
 # - electron/gamma escape
 # - time resolution (pile-up, singles with different eventID, true_coinc)
 # - energy/spatial resolution
-def valid_psource(pixelCoincidences, src_pos, vpitch, vsize, cone_width=0.01,
+def valid_psource(CCevents, src_pos, vpitch, vsize, cone_width=0.01,
                   plot_seq=False,
                   plot_stk=True, plot_fwhm=False, output_filename=None, colorbar=False,
                   method='numpy',
@@ -287,7 +287,7 @@ def valid_psource(pixelCoincidences, src_pos, vpitch, vsize, cone_width=0.01,
     of slices and outputs the processed data in stack form.
 
     Args:
-        pixelCoincidences (pandas.DataFrame): DataFrame containing the cone information used for validation.
+        CCevents (pandas.DataFrame): DataFrame containing the cone information used for validation.
         src_pos (list[float]): The X,Y,Z coordinates of the point source.
         vpitch (float): The voxel size or pitch of the volume.
         vsize (tuple[int, int, int]): The size of the volume in voxels (X, Y, Z).
@@ -297,7 +297,7 @@ def valid_psource(pixelCoincidences, src_pos, vpitch, vsize, cone_width=0.01,
         method (str): Reconstruction method: "numpy", "cupy", "torch", "coresi"
         kwargs: extra parameters for CoReSi:
             sensor_size (list[float])
-            sensor_position (list[float]): must be same coord system as pixelCoincidences
+            sensor_position (list[float]): must be same coord system as CCevents
             sensor_rotation (3×3 rotation matrix): TODO not implemented yet
             energies_MeV (list[float]): multiple energy peaks can be used
             tol_MeV (float): energy tolerance in MeV
@@ -307,25 +307,25 @@ def valid_psource(pixelCoincidences, src_pos, vpitch, vsize, cone_width=0.01,
     """
     stime = time.time()
     global_log.info(f'Offline [validate source]: START')
-    if not len(pixelCoincidences):
+    if not len(CCevents):
         global_log.error(f"Empty input (no cones in dataframe).")
         global_log.info(
             f"Offline [validate source]: {get_stop_string(stime)}")
         return
     else:
-        global_log.debug(f"Input cone dataframe with {len(pixelCoincidences)} entries")
+        global_log.debug(f"Input cone dataframe with {len(CCevents)} entries")
 
     # Source position must be in units of voxels in vol
     sp_vox = [int(src_pos[i] / vpitch) + (vsize[i] // 2) for i in range(3)]
 
     z_slice_stack = np.zeros((vsize[0], vsize[1]), dtype=np.float32)
-    pixelCoincidences = pixelCoincidences.reset_index(drop=True)
+    CCevents = CCevents.reset_index(drop=True)
 
     # ##############################################################
     # # Reconstruct and display slices one by one with matplotlib
     # ##############################################################
     if plot_seq:
-        for idx, cone in pixelCoincidences.iterrows():
+        for idx, cone in CCevents.iterrows():
             vol = reconstruct(cone.to_frame().T, vpitch, vsize, cone_width=cone_width,
                               log=False, method=method, **kwargs)
             if np.all(vol == 0):
@@ -345,7 +345,7 @@ def valid_psource(pixelCoincidences, src_pos, vpitch, vsize, cone_width=0.01,
     # # Reconstruct full volume and select slice at source position
     # ##############################################################
     else:
-        vol = reconstruct(pixelCoincidences, vpitch, vsize, cone_width=cone_width,
+        vol = reconstruct(CCevents, vpitch, vsize, cone_width=cone_width,
                           log=False,
                           method=method, **kwargs)
         if np.all(vol == 0):
@@ -404,7 +404,7 @@ def valid_psource(pixelCoincidences, src_pos, vpitch, vsize, cone_width=0.01,
             ax_v.legend(loc='lower right')
 
             fig.text(0.5, 0.98,
-                     s=f'{len(pixelCoincidences)} cones, {cone_width} width',
+                     s=f'{len(CCevents)} cones, {cone_width} width',
                      ha='center', va='top',
                      bbox=dict(facecolor='white', alpha=0.8))
         else:

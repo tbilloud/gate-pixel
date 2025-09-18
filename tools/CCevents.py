@@ -1,4 +1,4 @@
-# Functions to process pixelCoincidences dataframes
+# Functions to process CCevents dataframes
 # E1 = energy deposited in the Compton scattering, as in CCMod paper
 
 import os
@@ -20,17 +20,17 @@ except ImportError:
     global_log = logging.getLogger("dummy")
     global_log.addHandler(logging.NullHandler())
 
-# Pixel coincidences format definition: same as CoReSi input
-coincidences_columns = ['n']
+# CCevents format definition: same as CoReSi input
+CCevents_columns = ['n']
 for i in range(2):
-    coincidences_columns += [f'evt_{i + 1}', f'PositionX_{i + 1}', f'PositionY_{i + 1}',
+    CCevents_columns += [f'evt_{i + 1}', f'PositionX_{i + 1}', f'PositionY_{i + 1}',
                              f'PositionZ_{i + 1}', f'Energy (keV)_{i + 1}']
 
 
-def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01,
+def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                                       entry_stop=None):
     """
-    Read Gate hits (from DigitizerHitsCollectionActor) and filter Compton/photo-electric coincidences.
+    Read Gate hits (from DigitizerHitsCollectionActor) and filter CCevents.
 
     Args:
         file_path (str): Path to the ROOT file containing hit data.
@@ -56,20 +56,20 @@ def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01,
         entry_stop (int, optional): Number of entries to read from the ROOT file. Defaults to None.
 
     Returns:
-        pandas.DataFrame: DataFrame containing pixel coincidences.
+        pandas.DataFrame: DataFrame containing CCevents.
     """
     stime = time.time()
-    global_log.info(f"Offline [coincidences]: START")
+    global_log.info(f"Offline [CCevents]: START")
     if not os.path.isfile(file_path):
         global_log.error(f"File {file_path} does not exist, probably no hit produced.")
-        global_log.info(f"Offline [coincidences]: {get_stop_string(stime)}")
+        global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
         return pandas.DataFrame()
 
     stime = time.time()
     hits_df = uproot.open(file_path)['Hits'].arrays(library='pd', entry_stop=entry_stop)
     global_log.debug(f"Input {file_path} ({len(hits_df)} entries)")
     grouped = hits_df.groupby('EventID')
-    coincidences = []
+    CCevents = []
 
     source_is_ion = isinstance(source_MeV, str) and source_MeV[0].isalpha()
     daughter_name = None
@@ -139,31 +139,31 @@ def gHits2pixelCoincidences_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                     photoelec_pos = [h2[f'PrePosition_{ax}'] for ax in 'XYZ']
 
         if compton_pos:
-            coincidences.append(
+            CCevents.append(
                 [2, 1] + compton_pos + [1000 * E1] + [2] + photoelec_pos + [
                     1000 * E2])
 
-    df = pandas.DataFrame(coincidences, columns=coincidences_columns)
+    df = pandas.DataFrame(CCevents, columns=CCevents_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
     global_log.debug(f"=> {n_events_full_edep} with full energy deposited in sensor")
-    global_log.debug(f"  => {len(coincidences)} with at least one Compton interaction")
-    global_log.info(f"Offline [coincidences]: {len(coincidences)} coincidences")
+    global_log.debug(f"  => {len(CCevents)} with at least one Compton interaction")
+    global_log.info(f"Offline [CCevents]: {len(CCevents)} events")
     global_log_debug_df(df)
-    global_log.info(f"Offline [coincidences]: {get_stop_string(stime)}")
+    global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
     return df
 
 
-def gHits2pixelCoincidences(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
+def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
     """
-    Same as gHits2pixelCoincidences_prototype but faster implementation using NumPy arrays.
+    Same as gHits2CCevents_prototype but faster implementation using NumPy arrays.
     Obtained from GPT-4.1 by feeding it the prototype and asking for optimizations.
     => about 10x faster when used in isotope.py example
     """
     stime = time.time()
-    global_log.info(f"Offline [coincidences]: START")
+    global_log.info(f"Offline [CCevents]: START")
     if not os.path.isfile(file_path):
         global_log.error(f"File {file_path} does not exist, probably no hit produced.")
-        global_log.info(f"Offline [coincidences]: {get_stop_string(stime)}")
+        global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
         return pandas.DataFrame()
 
     hits_df = uproot.open(file_path)['Hits'].arrays(library='pd', entry_stop=entry_stop)
@@ -198,7 +198,7 @@ def gHits2pixelCoincidences(file_path, source_MeV, tolerance_MeV=0.01, entry_sto
     for idx, eid in enumerate(event_ids):
         event_idx.setdefault(eid, []).append(idx)
 
-    coincidences = []
+    CCevents = []
     n_events_primary = 0
     n_events_full_edep = 0
 
@@ -278,23 +278,23 @@ def gHits2pixelCoincidences(file_path, source_MeV, tolerance_MeV=0.01, entry_sto
         else:
             continue
 
-        coincidences.append([2, 1] + compton_pos.tolist() + [1000 * E1] + [2] +
+        CCevents.append([2, 1] + compton_pos.tolist() + [1000 * E1] + [2] +
                             photoelec_pos.tolist() + [1000 * E2])
 
-    df = pandas.DataFrame(coincidences, columns=coincidences_columns)
+    df = pandas.DataFrame(CCevents, columns=CCevents_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
     global_log.debug(f"=> {n_events_full_edep} with full energy deposited in sensor")
-    global_log.debug(f"  => {len(coincidences)} with at least one Compton interaction")
-    global_log.info(f"Offline [coincidences]: {len(coincidences)} coincidences")
+    global_log.debug(f"  => {len(CCevents)} with at least one Compton interaction")
+    global_log.info(f"Offline [CCevents]: {len(CCevents)} output entries")
     global_log_debug_df(df)
-    global_log.info(f"Offline [coincidences]: {get_stop_string(stime)}")
+    global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
     return df
 
 
-def pixelClusters2pixelCoincidences(pixelClusters, thickness_mm, charge_speed_mm_ns,
+def pixelClusters2CCevents(pixelClusters, thickness_mm, charge_speed_mm_ns,
                                     coincidence_window_ns=100):
     stime = time.time()
-    global_log.info(f"Offline [coincidences]: START")
+    global_log.info(f"Offline [CCevents]: START")
 
     if not len(pixelClusters):
         global_log.error(f"Empty input (no clusters in dataframe).")
@@ -321,8 +321,8 @@ def pixelClusters2pixelCoincidences(pixelClusters, thickness_mm, charge_speed_mm
     grouped = pixelClusters_copy.groupby(EVENTID)
     grouped = [group for group in grouped if len(group[1]) == 2]
 
-    coincidences = []
-    pixelCoincidences = pandas.DataFrame()
+    CCevents = []
+    CCevents_df = pandas.DataFrame()
     for eventid, group in grouped:
         # 0) TODO: Filter fluorescence events? E.g.:
         # if group['Energy (keV)'].between(22, 28).any():
@@ -355,24 +355,24 @@ def pixelClusters2pixelCoincidences(pixelClusters, thickness_mm, charge_speed_mm
         # 5) Construct cone
         E1_keV = cl_compton[ENERGY_keV]
         E2_keV = cl_photoel[ENERGY_keV]
-        coincidences.append(
+        CCevents.append(
             [eventid] + [2, 1] + pos_compton + [E1_keV] + [2] + pos_photoel + [E2_keV])
-        pixelCoincidences = pandas.DataFrame(coincidences,
-                                             columns=[EVENTID] + coincidences_columns)
+        CCevents_df = pandas.DataFrame(CCevents,
+                                             columns=[EVENTID] + CCevents_columns)
 
-    global_log.info(f"Offline [coincidences]: {len(coincidences)} cones")
-    global_log_debug_df(pixelCoincidences)
-    global_log.info(f"Offline [coincidences]: {get_stop_string(stime)}")
-    return pixelCoincidences
+    global_log.info(f"Offline [CCevents]: {len(CCevents_df)} cones")
+    global_log_debug_df(CCevents_df)
+    global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
+    return CCevents_df
 
 
-def local2global(pixelCoincidences, translation, rotation, npix, pitch, thickness):
+def local2global(CCevents, translation, rotation, npix, pitch, thickness):
     """
     Converts local fractional coordinates in a coresi events DataFrame to global coordinates.
     Assumes three sets of position columns per event.
 
     Args:
-        pixelCoincidences (DataFrame): Input DataFrame with coresi_events_columns.
+        CCevents (DataFrame): Input DataFrame with coresi_events_columns.
         translation (list): Translation vector [x, y, z] of the sensor in global coordinates.
         rotation (list of list): Rotation matrix (3x3) of the sensor.
         npix (int): Number of pixels along one dimension (assuming square grid).
@@ -386,7 +386,7 @@ def local2global(pixelCoincidences, translation, rotation, npix, pitch, thicknes
     global_log.info(f"Offline [transform coord]: START")
     stime = time.time()
 
-    df_copy = pixelCoincidences.copy()
+    df_copy = CCevents.copy()
     if df_copy.empty:
         global_log.error('Input DataFrame is empty. No coordinates to convert.')
     else:
@@ -406,11 +406,11 @@ def local2global(pixelCoincidences, translation, rotation, npix, pitch, thicknes
     return df_copy
 
 
-def select_pixelCoincidences_energies(pixelCoincidences, energies_MeV, tol_MeV):
+def select_CCevents_energies(CCevents, energies_MeV, tol_MeV):
     energies_keV = np.array(energies_MeV) * 1000
     tol_keV = tol_MeV * 1000
-    energy_sum = pixelCoincidences['Energy (keV)_1'] + pixelCoincidences['Energy (keV)_2']
+    energy_sum = CCevents['Energy (keV)_1'] + CCevents['Energy (keV)_2']
     mask = np.any([
         np.abs(energy_sum - e) <= tol_keV for e in energies_keV
     ], axis=0)
-    return pixelCoincidences[mask]
+    return CCevents[mask]
