@@ -93,55 +93,7 @@ def plot_energies(
     return fig, axes
 
 
-# Python
-def _mark_detector_in_volume(vol, size, position, vpitch):
-    center = np.array(vol.shape) // 2
-    start = ((np.array(position) - np.array(size) / 2) / vpitch + center).astype(int)
-    end = ((np.array(position) + np.array(size) / 2) / vpitch + center).astype(int)
-    start = np.maximum(start, 0)
-    end = np.minimum(end, vol.shape)
-    start = [int(x) for x in start]
-    end = [int(x) for x in end]
-    end = [e + 1 if e == s else e for s, e in zip(start, end)]
-    vol[start[0]:end[0], start[1]:end[1], start[2]:end[2]] = np.inf
-
-
-def _setup_napari_viewer(viewer, axes_order, orientation2d):
-    viewer.axes.visible = True
-    viewer.scale_bar.visible = True
-    viewer.scale_bar.unit = 'mm'
-    viewer.scale_bar.length = 10
-    viewer.scale_bar.font_size = 20
-    viewer.scale_bar.colored = True
-    viewer.scale_bar.color = 'red'
-    viewer.scale_bar.position = 'bottom_center'
-    viewer.dims.order = axes_order
-    viewer.camera.orientation2d = orientation2d
-
-
-def plot_reco(vol, vpitch, detector=False, colormap='gray_r', axes_order=(0, 1, 2),
-              orientation2d=('up', 'right')):
-    try:
-        import napari
-    except ImportError:
-        global_log.warning("Napari is not installed, cannot use plot_reco.")
-        return
-
-    if detector:
-        _mark_detector_in_volume(vol, detector['size'], detector['position'], vpitch)
-
-    viewer = napari.view_image(
-        vol,
-        translate=tuple(-(v * vpitch) / 2 for v in vol.shape),
-        axis_labels=['x', 'y', 'z'],
-        scale=[vpitch, vpitch, vpitch],
-        colormap=colormap
-    )
-    _setup_napari_viewer(viewer, axes_order, orientation2d)
-    napari.run()
-
-
-def plot_recos(
+def plot_reco(
         vols,
         vpitch,
         detectors=None,
@@ -151,19 +103,62 @@ def plot_recos(
         colormap="gray_r",
         names=None,
 ):
+    """
+    Visualizes one or more 3D volumes using napari, optionally marking detector regions.
+    If multiple volumes are provided, they are spaced apart along the first axis -> use buttons 'Toggle 2D/3D view' or 'Change order of visible axes'
+
+    Args:
+        vols (np.ndarray or list of np.ndarray): Single volume or list of volumes to display.
+        vpitch (float or tuple): Voxel pitch (mm).
+        detectors (list or dict, optional): Detector info for each volume, or single dict for one volume.
+        axes_order (tuple): Order of axes for napari viewer.
+        orientation2d (tuple): 2D orientation for napari viewer.
+        spacing_mm (float): Spacing between volumes (if multiple).
+        colormap (str): Colormap for display.
+        names (list, optional): Names for each volume.
+    """
     try:
         import napari
     except ImportError:
-        global_log.warning("Napari is not installed, cannot use plot_reco.")
+        global_log.warning(
+            "Napari is not installed, cannot use plot_volumes_with_napari.")
         return
 
-    n = len(vols)
-    if detectors is None:
-        detectors = [False] * n
-    if len(detectors) != n:
-        raise ValueError("`detectors` must be a list with the same length as `vols`.")
-    if names is None:
-        names = [f"vol_{i + 1}" for i in range(n)]
+    def _mark_detector_in_volume(vol, size, position, vpitch):
+        center = np.array(vol.shape) // 2
+        start = ((np.array(position) - np.array(size) / 2) / vpitch + center).astype(
+            int)
+        end = ((np.array(position) + np.array(size) / 2) / vpitch + center).astype(int)
+        start = np.maximum(start, 0)
+        end = np.minimum(end, vol.shape)
+        start = [int(x) for x in start]
+        end = [int(x) for x in end]
+        end = [e + 1 if e == s else e for s, e in zip(start, end)]
+        vol[start[0]:end[0], start[1]:end[1], start[2]:end[2]] = np.inf
+
+    def _setup_napari_viewer(viewer, axes_order, orientation2d):
+        viewer.axes.visible = True
+        viewer.scale_bar.visible = True
+        viewer.scale_bar.unit = 'mm'
+        viewer.scale_bar.length = 10
+        viewer.scale_bar.font_size = 20
+        viewer.scale_bar.colored = True
+        viewer.scale_bar.color = 'red'
+        viewer.scale_bar.position = 'bottom_center'
+        viewer.dims.order = axes_order
+        viewer.camera.orientation2d = orientation2d
+
+    # Handle single volume input
+    if isinstance(vols, np.ndarray):
+        vols = [vols]
+        detectors = [detectors] if detectors is not None else [False]
+        names = names or ["vol_1"]
+    else:
+        n = len(vols)
+        if detectors is None:
+            detectors = [False] * n
+        if names is None:
+            names = [f"vol_{i + 1}" for i in range(n)]
 
     pitch = (float(vpitch),) * 3 if np.isscalar(vpitch) else tuple(map(float, vpitch))
     vsize = vols[0].shape
