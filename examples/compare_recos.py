@@ -29,7 +29,7 @@ if __name__ == "__main__":
     CCevents = gHits2CCevents(hits_path, source.energy.mono)
     reco_params = {'vpitch': 0.2, 'vsize': [256, 256, 256], 'cone_width': 0.01,
                    'energies_MeV': [source.energy.mono], 'tol_MeV': 0.01}
-    tol_MeV = 0.01,
+
     # #################### NUMPY ##########################
     valid_psource(CCevents, **reco_params, src_pos=sp, method='numpy')
 
