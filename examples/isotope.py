@@ -41,14 +41,13 @@ if __name__ == "__main__":
     hits = sim.actor_manager.get_actor("Hits")
     sensor = sim.volume_manager.get_volume("sensor")
     npix, pitch, thick = 256, 55 * um, 1 * mm
-    reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01}
     ghits_file = sim.output_dir / hits.output_filename
     ghits_df = uproot.open(ghits_file)[hits.name].arrays(library='pd')
     nevents = json.load(open(sim.output_dir / 'gateStats.txt'))['events']['value']
     global_log.info(
         f"{metric_num(nevents)} events, {metric_num(len(ghits_df))} hits\n{'-' * 80}")
 
-    # ############################ REFERENCE CONES #####################################
+    # ############################### REFERENCE  #######################################
 
     # Find information about the isotope by
     #   1. Listing excited states of decay daughters:
@@ -71,8 +70,6 @@ if __name__ == "__main__":
     # source_str ='Cd111[245.390]_' + str(p_keV)
     # cones_ref = gHits2pixelCoincidences(ghits_file, source_MeV=source_str)
 
-    valid_psource(coin_ref, src_pos=source.position.translation, **reco_params)
-
     # ################################ ALLPIX  #########################################
 
     # DETECTOR PARAMETERS
@@ -91,15 +88,23 @@ if __name__ == "__main__":
 
     # PIXEL CLUSTERS
     pixelClusters = pixelHits2pixelClusters(pixelHits, npix=npix, window_ns=100)
-    plot_energies(max_keV=300, hits_list=[pixelHits],
-                  clusters_list=[pixelClusters])
 
     # PIXEL COINCIDENCES
     spd = charge_speed_mm_ns(mobility_cm2_Vs=mobility_e, bias_V=bias, thick_mm=thick)
     coin = pixelClusters2pixelCoincidences(pixelClusters,
-                                           source_MeV=p_keV / 1000,
                                            thickness_mm=thick,
                                            charge_speed_mm_ns=spd,
                                            )
     coin = local2global(coin, sensor.translation, sensor.rotation, npix, pitch, thick)
+
+    # ################################ COMPARISON  #####################################
+
+    # ENERGY HISTOGRAMS
+    plot_energies(max_keV=300, hits_list=[pixelHits],
+                  clusters_list=[pixelClusters],
+                  coincidences_list=[coin])
+
+    # CONE VALIDATION
+    reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01}
+    valid_psource(coin_ref, src_pos=source.position.translation, **reco_params)
     valid_psource(coin, src_pos=source.position.translation, **reco_params)
