@@ -184,7 +184,7 @@ def plot_reco(
     napari.run()
 
 
-def compare_clusters(
+def compare_pixelClusters(
         clusters1, clusters2, name_a='A', name_b='B', xlog=False, ylog=False, npix=256,
         energy_bins=None, toa_bins=None, dtoa_bins=None, size_bins=None,
         energy_range=None, toa_range=None, dtoa_range=None, size_range=None
