@@ -1,5 +1,8 @@
-# Functions to process CCevents dataframes
-# E1 = energy deposited in the Compton scattering, as in CCMod paper
+# Functions to process Compton camera events (CCevents)
+# A CCevent is defined as two interactions in the sensor with 3D positions:
+# 1) a Compton interaction, with the energy of the recoiling electron (E1)
+# 2) a 2nd interaction, which might be a photo-electric absorption or another Compton interaction.
+#    => in either case, the energy (E2) should be that of the initially scattered gamma (Egamma - E1)
 
 import os
 import time
@@ -24,11 +27,11 @@ except ImportError:
 CCevents_columns = ['n']
 for i in range(2):
     CCevents_columns += [f'evt_{i + 1}', f'PositionX_{i + 1}', f'PositionY_{i + 1}',
-                             f'PositionZ_{i + 1}', f'Energy (keV)_{i + 1}']
+                         f'PositionZ_{i + 1}', f'Energy (keV)_{i + 1}']
 
 
 def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
-                                      entry_stop=None):
+                             entry_stop=None):
     """
     Read Gate hits (from DigitizerHitsCollectionActor) and filter CCevents.
 
@@ -100,7 +103,7 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
             n_events_primary += 1
             if source_is_ion:
                 part_id = \
-                grp[grp['ParentParticleName'] == daughter_name]['TrackID'].values[0]
+                    grp[grp['ParentParticleName'] == daughter_name]['TrackID'].values[0]
                 descendants = find_descendants(grp, part_id)
                 totenergy = grp[grp['TrackID'].isin(descendants.union({part_id}))][
                     'TotalEnergyDeposit'].sum()
@@ -279,7 +282,7 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
             continue
 
         CCevents.append([2, 1] + compton_pos.tolist() + [1000 * E1] + [2] +
-                            photoelec_pos.tolist() + [1000 * E2])
+                        photoelec_pos.tolist() + [1000 * E2])
 
     df = pandas.DataFrame(CCevents, columns=CCevents_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
@@ -292,7 +295,7 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
 
 
 def pixelClusters2CCevents(pixelClusters, thickness_mm, charge_speed_mm_ns,
-                                    coincidence_window_ns=100):
+                           coincidence_window_ns=100):
     stime = time.time()
     global_log.info(f"Offline [CCevents]: START")
 
@@ -358,7 +361,7 @@ def pixelClusters2CCevents(pixelClusters, thickness_mm, charge_speed_mm_ns,
         CCevents.append(
             [eventid] + [2, 1] + pos_compton + [E1_keV] + [2] + pos_photoel + [E2_keV])
         CCevents_df = pandas.DataFrame(CCevents,
-                                             columns=[EVENTID] + CCevents_columns)
+                                       columns=[EVENTID] + CCevents_columns)
 
     global_log.info(f"Offline [CCevents]: {len(CCevents_df)} cones")
     global_log_debug_df(CCevents_df)
