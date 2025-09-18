@@ -390,7 +390,7 @@ def local2global(pixelCoincidences, translation, rotation, npix, pitch, thicknes
     if df_copy.empty:
         global_log.error('Input DataFrame is empty. No coordinates to convert.')
     else:
-        for i in range(1, 2):  # For each event (1, 2, 3)
+        for i in range(1, 3):  # For each event (1, 2)
             position_cols = [f"PositionX_{i}", f"PositionY_{i}", f"PositionZ_{i}"]
 
             def convert_row(row):
