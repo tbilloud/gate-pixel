@@ -24,7 +24,7 @@ except ImportError:
     global_log.addHandler(logging.NullHandler())
 
 
-def reconstruct(CCevents, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
+def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
                 cone_width=0.01, log=True, method="numpy",
                 **kwargs):
     """
@@ -37,8 +37,8 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
         cone_width (float): cone width (the larger the value the thicker the cones).
         log (bool): whether to log performance info
         method: "numpy", "cupy", "torch", "coresi" (see README for details)
-        energies_MeV: (list[float]): multiple energy peaks can be used
-        tol_MeV: (float): energy tolerance in MeV
+        energies_MeV: (list[float]): select energy peaks, False to disable (default)
+        tol_MeV: (float): if energy peaks are selected, tolerance in MeV
         kwargs: extra parameters for CoReSi:
             sensor_size (list[float])
             sensor_position (list[float]): must be same coord system as CCevents
@@ -55,7 +55,7 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=-1, tol_MeV=0.01,
                              tol_MeV=tol_MeV,
                              **kwargs)
     else:
-        if energies_MeV != -1:
+        if energies_MeV:
             CCevents = select_CCevents_energies(CCevents, energies_MeV, tol_MeV)
         cones = CCevents2CCcones(CCevents, log=False)
         if method == "cupy":
@@ -184,8 +184,7 @@ def reco_bp_torch(cones, vpitch, vsize, cone_width=0.01):
 
 
 def reco_bp_coresi(CCevents, vpitch, vsize, cone_width, sensor_size,
-                   sensor_position,
-                   sensor_rotation, energies_MeV, tol_MeV):
+                   sensor_position, sensor_rotation, energies_MeV, tol_MeV):
     try:
         from coresi.camera import setup_cameras
         from coresi.data import read_data_file
@@ -210,7 +209,7 @@ def reco_bp_coresi(CCevents, vpitch, vsize, cone_width, sensor_size,
     s = [x / 10 for x in sensor_size]  # convert to cm
     t = [0, 0, 0]  # center of the sensor
     p = [x / 10 for x in sensor_position]  # convert to cm
-    e_keV = [x * 1000 for x in energies_MeV]  # convert to keV
+    e_keV = [x * 1000 for x in energies_MeV] if energies_MeV else [-1]  # convert to keV
 
     cam = setup_cameras({'n_cameras': 1,
                          'common_attributes': {'n_sca_layers': 1,
