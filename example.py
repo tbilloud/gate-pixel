@@ -6,9 +6,11 @@
 # - compare with Gate's blurred singles
 
 from opengate.utility import g4_units
+from examples.gate_simu import gate_simu
 from tools.pixelHits import singles2pixelHits
 from tools.reconstruction import valid_psource
-from tools.pixelCoincidences import gHits2pixelCoincidences_prototype, local2global, pixelClusters2pixelCoincidences
+from tools.pixelCoincidences import gHits2pixelCoincidences_prototype, local2global, \
+    pixelClusters2pixelCoincidences
 from tools.utils import charge_speed_mm_ns
 from tools.allpix import gHits2allpix2pixelHits
 from tools.pixelClusters import pixelHits2pixelClusters
@@ -20,7 +22,6 @@ if __name__ == "__main__":
     ## ============================
     ## ==  RUN GATE              ==
     ## ============================
-    from examples.gate_simu import gate_simu
     sim = gate_simu()
     sim.random_engine, sim.random_seed = "MersenneTwister", 1
     singles = sim.add_actor("DigitizerReadoutActor", "Singles")
@@ -46,7 +47,8 @@ if __name__ == "__main__":
     singles_b = sim.actor_manager.get_actor("Singles_b")
     source = sim.source_manager.get_source("source")
     npix, pitch, thick = 256, 55 * um, 1 * mm
-    reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01}
+    reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01,
+                   'energies_MeV': [source.energy.mono], 'tol_MeV': 0.01}
     bias = -500  # in V
     mobility_e = 1000  # main charge carrier mobility in cm^2/Vs
     spd = charge_speed_mm_ns(mobility_cm2_Vs=mobility_e, bias_V=bias, thick_mm=thick)
@@ -54,7 +56,8 @@ if __name__ == "__main__":
                            npix=npix, pitch=pitch, thickness=thick)
 
     # ######## REFERENCE ##############
-    coinc_ref = gHits2pixelCoincidences_prototype(sim.output_dir / hits.output_filename, source.energy.mono)
+    coinc_ref = gHits2pixelCoincidences_prototype(sim.output_dir / hits.output_filename,
+                                                  source.energy.mono)
 
     # #########  SINGLES ##############
     hits_single = singles2pixelHits(sim.output_dir / singles_b.output_filename,
