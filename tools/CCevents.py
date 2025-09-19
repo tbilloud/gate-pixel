@@ -434,4 +434,6 @@ def select_CCevents_energies(CCevents, energies_MeV, tol_MeV):
     mask = np.any([
         np.abs(energy_sum - e) <= tol_keV for e in energies_keV
     ], axis=0)
-    return CCevents[mask]
+    CCevents = CCevents[mask]
+    global_log.debug(f"{len(CCevents)} CCevents after energy selection:\n{CCevents.head().to_string(index=False)}")
+    return CCevents
