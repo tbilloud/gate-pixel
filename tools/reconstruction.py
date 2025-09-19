@@ -78,7 +78,6 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
 
 
 def reco_bp_numpy(cones, vpitch, vsize, cone_width=0.01):
-
     volume = np.zeros(vsize, dtype=np.float32)
     grid_x = np.linspace(-vsize[0] // 2, vsize[0] // 2, vsize[0]) * vpitch
     grid_y = np.linspace(-vsize[1] // 2, vsize[1] // 2, vsize[1]) * vpitch
@@ -112,7 +111,6 @@ def reco_bp_cupy(cones, vpitch, vsize, cone_width=0.01):
     except ImportError:
         global_log.error(f"Please install cupy or use another backend.")
         return np.zeros(vsize, dtype=np.float32)
-
 
     volume = cupy.zeros(vsize, dtype=cupy.float32)
     grid_x = cupy.linspace(-vsize[0] // 2, vsize[0] // 2, vsize[0]) * vpitch
@@ -151,7 +149,6 @@ def reco_bp_torch(cones, vpitch, vsize, cone_width=0.01):
 
     dv = torch.device(
         'mps' if torch.backends.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu')
-
 
     volume = torch.zeros(vsize, dtype=torch.float32, device=dv)
     grid_x = torch.linspace(-vsize[0] // 2, vsize[0] // 2, vsize[0], device=dv) * vpitch
@@ -270,11 +267,10 @@ def reco_bp_coresi(CCevents, vpitch, vsize, cone_width, sensor_size,
 # - electron/gamma escape
 # - time resolution (pile-up, singles with different eventID, true_coinc)
 # - energy/spatial resolution
-def valid_psource(CCevents, src_pos, vpitch, vsize, cone_width=0.01,
-                  plot_seq=False,
-                  plot_stk=True, plot_fwhm=False, output_filename=None, colorbar=False,
-                  method='numpy',
-                  log_scale=False, **kwargs):
+def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
+                  cone_width=0.01, plot_seq=False, plot_stk=True, plot_fwhm=False,
+                  output_filename=None, colorbar=False, method='numpy', log_scale=False,
+                  **kwargs):
     """
     Check that input cones intersect a given point source.
 
@@ -294,12 +290,12 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, cone_width=0.01,
         plot_seq (bool, optional): If True, displays individual cone slices sequentially. Defaults to False.
         plot_stk (bool, optional): If True, displays the summed stack visualization. Defaults to True.
         method (str): Reconstruction method: "numpy", "cupy", "torch", "coresi"
+        energies_MeV: (list[float]): select energy peaks, False to disable (default)
+        tol_MeV: (float): if energy peaks are selected, tolerance in MeV
         kwargs: extra parameters for CoReSi:
             sensor_size (list[float])
             sensor_position (list[float]): must be same coord system as CCevents
             sensor_rotation (3×3 rotation matrix): TODO not implemented yet
-            energies_MeV (list[float]): multiple energy peaks can be used
-            tol_MeV (float): energy tolerance in MeV
 
     Returns:
         numpy.ndarray: The reconstructed slice at the source position.
@@ -325,8 +321,9 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, cone_width=0.01,
     # ##############################################################
     if plot_seq:
         for idx, cone in CCevents.iterrows():
-            vol = reconstruct(cone.to_frame().T, vpitch, vsize, cone_width=cone_width,
-                              log=False, method=method, **kwargs)
+            vol = reconstruct(cone.to_frame().T, vpitch, vsize,
+                              energies_MeV=energies_MeV, tol_MeV=tol_MeV,
+                              cone_width=cone_width, log=False, method=method, **kwargs)
             if np.all(vol == 0):
                 global_log.error("Reconstruction returned an empty volume.")
                 global_log.info('-' * 80)
@@ -344,9 +341,9 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, cone_width=0.01,
     # # Reconstruct full volume and select slice at source position
     # ##############################################################
     else:
-        vol = reconstruct(CCevents, vpitch, vsize, cone_width=cone_width,
-                          log=False,
-                          method=method, **kwargs)
+        vol = reconstruct(CCevents, vpitch, vsize,
+                          energies_MeV=energies_MeV, tol_MeV=tol_MeV,
+                          cone_width=cone_width, log=False, method=method, **kwargs)
         if np.all(vol == 0):
             global_log.error("Reconstruction returned an empty volume.")
             global_log.info('-' * 80)
