@@ -308,7 +308,7 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=
             f"Offline [validate source]: {get_stop_string(stime)}")
         return
     else:
-        global_log.debug(f"Input cone dataframe with {len(CCevents)} entries")
+        global_log.debug(f"Input: {len(CCevents)} CCevents")
 
     # Source position must be in units of voxels in vol
     sp_vox = [int(src_pos[i] / vpitch) + (vsize[i] // 2) for i in range(3)]

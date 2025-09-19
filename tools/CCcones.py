@@ -18,17 +18,18 @@ COS = 'cosT'
 ERROR = 'error'
 
 
-def CCevents2CCcones(CCevents, log = False):
-    if log:
-        global_log.info(f"Offline [cones]: START")
+def CCevents2CCcones(CCevents, log=True):
     stime = time.time()
 
-    if not len(CCevents):
-        global_log.error(f"Empty input.")
-        global_log.info(f"Offline [cones]: {get_stop_string(stime)}")
-        return pandas.DataFrame()
-    else:
+    if log:
+        global_log.info("Offline [cones]: START")
+        if not len(CCevents):
+            global_log.error("Empty input.")
+            global_log.info(f"Offline [cones]: {get_stop_string(stime)}")
+            return pandas.DataFrame()
         global_log.debug(f"Input: {len(CCevents)} entries")
+    elif not len(CCevents):
+        return pandas.DataFrame()
 
     pos_compton = CCevents[
         ['PositionX_1', 'PositionY_1', 'PositionZ_1']].to_numpy()
