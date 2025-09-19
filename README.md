@@ -3,7 +3,7 @@
 A single python script to:
 
 - Simulate gamma sources and interactions via Gate 10 / Geant4
-- Simulate the Timepix3 detector response via Allpix2
+- Simulate the Timepix3 detector response (date driven mode) via Allpix2
 - Process Timepix3 data, either simulated or measured
 - Generate Compton camera events & cones
 - Reconstruct the source via basic back-projection or CoReSi
