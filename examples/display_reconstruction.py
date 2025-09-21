@@ -10,7 +10,7 @@ from tools.allpix import gHits2allpix2pixelHits
 from tools.utils_plot import plot_reco
 
 # INPUT
-sim = copy_sim_from_script('example.py')
+sim = copy_sim_from_script('examples/main.py')
 sensor = sim.volume_manager.get_volume("sensor")
 source = sim.source_manager.get_source("source")
 thick = sensor.size[2]

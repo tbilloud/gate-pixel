@@ -1,6 +1,6 @@
 # Shows how to process Gate simulation data offline
-# Based on output from the example.py -> it needs to be run first
-# Plots are the same as in example.py if the Allpix/clustering parameters are the same
+# Based on output from the main.py -> it needs to be run first
+# Plots are the same as in main.py if the Allpix/clustering parameters are the same
 
 from tools.CCevents import pixelClusters2CCevents, local2global
 from tools.pixelHits import singles2pixelHits
@@ -11,7 +11,7 @@ from tools.allpix import gHits2allpix2pixelHits
 from tools.utils_plot import plot_energies
 
 # INPUT
-sim = copy_sim_from_script('example.py')
+sim = copy_sim_from_script('examples/main.py')
 sensor = sim.volume_manager.get_volume("sensor")
 source = sim.source_manager.get_source("source")
 thick = sensor.size[2]
