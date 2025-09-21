@@ -102,6 +102,9 @@ if __name__ == "__main__":
                   CCevents_list=[coin])
 
     # CONE VALIDATION
-    reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01}
+    reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01,
+                   'energies_MeV': [p_keV / 1000], 'tol_MeV': 0.01,
+                   'method': 'torch'  # remove if torch is not installed
+                   }
     valid_psource(coin_ref, src_pos=source.position.translation, **reco_params)
     valid_psource(coin, src_pos=source.position.translation, **reco_params)
