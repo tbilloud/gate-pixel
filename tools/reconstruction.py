@@ -49,11 +49,14 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
         global_log.info(f"Offline [reconstruction][{method}]: START")
     stime = time.time()
 
+    if CCevents is None or len(CCevents) == 0:
+        global_log.error("Empty input.")
+        global_log.info(f"Offline [reconstruction]: {get_stop_string(stime)}")
+        return
+
     if method == "coresi":
-        vol = reco_bp_coresi(CCevents, vpitch=vpitch, vsize=vsize,
-                             cone_width=cone_width * 300, energies_MeV=energies_MeV,
-                             tol_MeV=tol_MeV,
-                             **kwargs)
+        vol = reco_bp_coresi(CCevents, vpitch, vsize, cone_width * 300,
+                             energies_MeV=energies_MeV, tol_MeV=tol_MeV, **kwargs)
     else:
         if energies_MeV:
             CCevents = select_CCevents_energies(CCevents, energies_MeV, tol_MeV)
@@ -71,8 +74,7 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
             raise ValueError(f"Unknown method: {method}")
 
     if log:
-        global_log.info(
-            f"Offline [reconstruction][{method}]: {get_stop_string(stime)}")
+        global_log.info(f"Offline [reconstruction][{method}]: {get_stop_string(stime)}")
 
     return vol
 
