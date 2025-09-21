@@ -328,13 +328,11 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=
                               cone_width=cone_width, log=False, method=method, **kwargs)
             if np.all(vol == 0):
                 global_log.error("Reconstruction returned an empty volume.")
-                global_log.info('-' * 80)
-                return np.zeros((vsize[0], vsize[1]), dtype=np.float32)
+                continue
             z_slice = vol[:, :, sp_vox[2]]
             z_slice_stack += z_slice
             plt.imshow(z_slice, cmap='gray', origin='lower')
             plt.scatter(sp_vox[0], sp_vox[1], c='r', s=10)
-            plt.title(f'EventID: {int(cone[EVENTID])}')
             if colorbar: plt.colorbar()
             plt.tight_layout()
             plt.show()
