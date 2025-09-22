@@ -143,10 +143,10 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
 
         if compton_pos:
             CCevents.append(
-                [2, 1] + compton_pos + [1000 * E1] + [2] + photoelec_pos + [
+                [eventid] + [2, 1] + compton_pos + [1000 * E1] + [2] + photoelec_pos + [
                     1000 * E2])
 
-    df = pandas.DataFrame(CCevents, columns=CCevents_columns)
+    df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
     global_log.debug(f"=> {n_events_full_edep} with full energy deposited in sensor")
     global_log.debug(f"  => {len(CCevents)} with at least one Compton interaction")
@@ -281,10 +281,10 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
         else:
             continue
 
-        CCevents.append([2, 1] + compton_pos.tolist() + [1000 * E1] + [2] +
+        CCevents.append([eid] + [2, 1] + compton_pos.tolist() + [1000 * E1] + [2] +
                         photoelec_pos.tolist() + [1000 * E2])
 
-    df = pandas.DataFrame(CCevents, columns=CCevents_columns)
+    df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
     global_log.debug(f"=> {n_events_full_edep} with full energy deposited in sensor")
     global_log.debug(f"  => {len(CCevents)} with at least one Compton interaction")
