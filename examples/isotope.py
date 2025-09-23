@@ -1,7 +1,6 @@
 # Example showing how to simulate a radioactive source and its cones in case of:
 # - an ideal detector (with function gHits2cones_byEvtID)
 # - a Timepix detector (with Allpix and hits/cluster processing)
-# Might take a few minutes depending on the machine
 
 # WARNING:
 # source.direction.acceptance_angle and theta_phi() modify activity with ion sources!
