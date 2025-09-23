@@ -1,5 +1,7 @@
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
+from opengate.logger import global_log
 from tools.pixelHits import ENERGY_keV
 
 
@@ -120,7 +122,51 @@ def plot_reco(
     try:
         import napari
     except ImportError:
-        print("Napari is not installed, cannot use plot_reco.")
+        global_log.warning("Napari is not installed, using matplotlib instead.")
+
+        import matplotlib
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from matplotlib.widgets import Slider
+        import matplotlib
+
+        if sys.platform == "darwin":
+            matplotlib.use("macosx")
+        else:
+            try:
+                matplotlib.use("TkAgg")
+            except ImportError:
+                matplotlib.use("Agg")
+
+        if isinstance(vols, list):
+            vol = vols[0]
+        else:
+            vol = vols
+
+        # 3D
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # # Affichage d'un isosurface simple (seuil arbitraire)
+        # verts = np.argwhere(vol > np.percentile(vol, 99))
+        # ax.scatter(verts[:, 0], verts[:, 1], verts[:, 2], c=vol[vol > np.percentile(vol, 99)], cmap=colormap, s=1)
+        # ax.set_title(names[0] if names else "Volume 3D")
+        # plt.show()
+
+        # 2D with slider
+        fig, ax = plt.subplots()
+        plt.subplots_adjust(bottom=0.2)
+        img = ax.imshow(vol[:, :, 0], cmap='gray')
+        ax.set_title('Coupe z=0')
+        ax_slider = plt.axes([0.2, 0.05, 0.6, 0.03])
+        slider = Slider(ax_slider, 'z', 0, vol.shape[2] - 1, valinit=0, valstep=1)
+        def update(val):
+            z = int(slider.val)
+            img.set_data(vol[:, :, z])
+            ax.set_title(f'Coupe z={z}')
+            fig.canvas.draw_idle()
+        slider.on_changed(update)
+        plt.show()
+
         return
 
     def _mark_detector_in_volume(vol, size, position, vpitch):

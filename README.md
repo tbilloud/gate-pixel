@@ -196,24 +196,6 @@ This will create a `coresi` sub-directory, which will contain:
 - files containing Compton camera events, which are used as input when running CoReSi (see
   TODOs)
 
-## [Installation without simulation packages](#install-offline)
-
-Use cases:
-
-- For analyzing measured data, avoiding opengate and Allpix² saves time and disk space.
-- For visualising with napari on macOS, a second virtual environment is needed (
-  see [napari/opengate conflict](#napariopengate-conflict) below). No need to install
-  opengate/Alllpix again.
-
-```
-git clone https://github.com/tbilloud/gate-pixel
-cd ComptonCamera
-python3 -m venv venv-offline
-source venv-offline/bin/activate
-pip install -r requirements-offline.txt
-```
-
-In opengate, running code without simulation is called 'offline'. See examples/offline.
 
 ## [Getting started](#getting-started)
 
