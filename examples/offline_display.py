@@ -19,7 +19,7 @@ npix, pitch = 256, 0.055
 spd = charge_speed_mm_ns(mobility_cm2_Vs=1000, bias_V=-500, thick_mm=thick)
 
 # REFERENCE
-ev_ref = gHits2CCevents('output/gateHits.root', source_MeV=source.energy.mono, entry_stop=100)
+ev_ref = gHits2CCevents('output/gateHits.root', source_MeV=source.energy.mono)
 
 # ALLPIX
 hits_allpix = gHits2allpix2pixelHits(sim,
