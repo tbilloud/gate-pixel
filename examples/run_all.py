@@ -1,6 +1,6 @@
-# Runs all examples at once, used for testing purposes
+# Runs all examples at once for testing purposes
 
-# Set to True to see logs
+# Set to True to see messages from global_log()
 avoid_log = True
 
 import subprocess
@@ -12,6 +12,10 @@ offline = [e for e in examples if e.name.startswith('offline_')]
 others = [e for e in examples if not e.name.startswith('offline_')]
 ordered = others + offline
 for script in ordered:
+
+    # Avoid some scripts:
+    # - the current one would loop forever
+    # - the comparison with measured data needs additional data
     if script.name in ['run_all.py','compare_measure.py']:
         continue
     print('Running',script)
