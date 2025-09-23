@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from opengate.logger import global_log
 from tools.pixelHits import ENERGY_keV
 
 
@@ -121,8 +120,7 @@ def plot_reco(
     try:
         import napari
     except ImportError:
-        global_log.warning(
-            "Napari is not installed, cannot use plot_reco.")
+        print("Napari is not installed, cannot use plot_reco.")
         return
 
     def _mark_detector_in_volume(vol, size, position, vpitch):
