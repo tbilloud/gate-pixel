@@ -1,4 +1,5 @@
 pandas
 uproot
 matplotlib
+awkward-pandas
 napari[all]
