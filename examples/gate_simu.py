@@ -47,8 +47,10 @@ def gate_simu():
     ## ============================
     source = sim.add_source("GenericSource", "source")
     source.particle = "gamma"
-    source.activity, sim.run_timing_intervals = 100e3 * Bq, [[0, 20 * ms]]
     source.energy.mono = 140 * keV
     source.position.translation = [0 * mm, 0 * mm, 0 * mm]
+    source.activity = 100e3 * Bq
+
+    sim.run_timing_intervals = [[0, 20 * ms]]
 
     return sim
