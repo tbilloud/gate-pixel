@@ -3,6 +3,9 @@
 # - a Timepix detector (with Allpix and hits/cluster processing)
 # Might take a few minutes depending on the machine
 
+# WARNING:
+# source.direction.acceptance_angle and theta_phi() modify activity with ion sources!
+
 import json
 from opengate.utility import g4_units
 from tools.allpix import *
@@ -11,8 +14,8 @@ from tools.utils_opengate import get_isotope_data
 from tools.reconstruction import valid_psource
 from tools.utils_plot import plot_energies
 from tools.pixelClusters import *
-from tools.CCevents import pixelClusters2CCevents, local2global, \
-    gHits2CCevents
+from tools.CCevents import pixelClusters2CCevents, local2global, gHits2CCevents
+from examples.gate_simu import gate_simu
 
 um, mm, keV, Bq, ms = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_units.ms
 
@@ -20,19 +23,23 @@ if __name__ == "__main__":
     ## ============================
     ## == RUN GATE               ==
     ## ============================
-    from examples.gate_simu import gate_simu
 
     sim = gate_simu()
+
+    # Add statistics actor to get number of events
     stats = sim.add_actor('SimulationStatisticsActor', 'Stats')
     stats.output_filename = 'gateStats.txt'
-    sim.physics_manager.enable_decay = True  # For radioactive sources
+
+    # Enable radioactive decay
+    sim.physics_manager.enable_decay = True
+
+    # Erase the monoenergetic source defined in gate_simu() and switch to ion
     source = sim.source_manager.get_source("source")
-    source.activity, sim.run_timing_intervals = 1_000_000 * Bq, [[0, 50 * ms]]
-    source.particle, source.half_life = 'ion 71 177', 6.65 * g4_units.day  # Lu177
+    source.particle, source.half_life = "ion 71 177", 6.65 * g4_units.day  # Lu177
     # source.particle, source.half_life = 'ion 49 111', 2.81 * g4_units.day # In111
     # source.particle, source.half_life = 'ion 42 99', 2.75 * g4_units.day # Mo99/Tc99m
-    source.position.translation = [0 * mm, 0 * mm, -5 * mm]
-    # WARNING: source.direction.acceptance_angle and theta_phi() modify source activity with ion sources!
+    source.energy.mono = 0  # erase energy that was set in gate_simu()
+
     sim.run()
 
     ## ============================
