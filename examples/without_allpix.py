@@ -26,11 +26,8 @@ if __name__ == "__main__":
     # ###### CCevents #########
     events = gHits2CCevents(sim.output_dir / hits.output_filename, source.energy.mono)
 
-    # ###### RECONSTRUCTION #######
+    # ###### VALIDATION  ##########
     reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01,
                    'energies_MeV': [source.energy.mono], 'tol_MeV': 0.01}
-    volume = reconstruct(events, **reco_params)
-
-    # ###### VALIDATION  ##########
     sp = source.position.translation
     valid_psource(events, method='numpy', src_pos=sp, **reco_params)
