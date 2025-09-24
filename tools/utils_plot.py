@@ -1,8 +1,10 @@
 import sys
-import matplotlib.pyplot as plt
 import numpy as np
 from opengate.logger import global_log
 from tools.pixelHits import ENERGY_keV
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
 
 
 def plot_energies(
@@ -52,7 +54,7 @@ def plot_energies(
     def plot_histogram(ax, data_list, title, xlab=False):
         for data, name, color, alpha in zip(data_list, names, colors, alphas):
             if data.empty:
-                print(f"Warning: empty dataframe for plot '{title}'.")
+                global_log.warning(f"Warning: empty dataframe for plot '{title}'.")
             else:
                 ax.hist(
                     data[ENERGY_keV],
@@ -96,39 +98,33 @@ def plot_energies(
 
 
 def plot_reco(
-        vols,
+        vol,
         vpitch,
-        detectors=None,
+        detector=None,
         axes_order=(0, 1, 2),
         orientation2d=("up", "right"),
-        spacing_mm=5.0,
         colormap="gray_r",
-        names=None,
+        name=None,
 ):
     """
-    Visualizes one or more 3D volumes using napari, optionally marking detector regions.
-    If multiple volumes are provided, they are spaced apart along the first axis -> use buttons 'Toggle 2D/3D view' or 'Change order of visible axes'
+    Displays a single 3D volume with napari or matplotlib (if napari is not available).
+    Can mark a detector region if specified.
 
     Args:
-        vols (np.ndarray or list of np.ndarray): Single volume or list of volumes to display.
-        vpitch (float or tuple): Voxel pitch (mm).
-        detectors (list or dict, optional): Detector info for each volume, or single dict for one volume.
-        axes_order (tuple): Order of axes for napari viewer.
-        orientation2d (tuple): 2D orientation for napari viewer.
-        spacing_mm (float): Spacing between volumes (if multiple).
+        vol (np.ndarray): Volume to display.
+        vpitch (float or tuple): Voxel size (mm).
+        detector (dict, optional): Detector info to mark.
+        axes_order (tuple): Axes order for napari.
+        orientation2d (tuple): 2D orientation for napari.
         colormap (str): Colormap for display.
-        names (list, optional): Names for each volume.
+        name (str, optional): Name of the volume.
     """
+
     try:
         import napari
     except ImportError:
-        global_log.warning("Napari is not installed, using matplotlib instead.")
-
-        import matplotlib
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from matplotlib.widgets import Slider
-        import matplotlib
+        from opengate.logger import global_log
+        global_log.warning("Napari not installed, using matplotlib.")
 
         if sys.platform == "darwin":
             matplotlib.use("macosx")
@@ -138,10 +134,22 @@ def plot_reco(
             except ImportError:
                 matplotlib.use("Agg")
 
-        if isinstance(vols, list):
-            vol = vols[0]
-        else:
-            vol = vols
+        # 2D with slider
+        fig, ax = plt.subplots()
+        plt.subplots_adjust(bottom=0.2)
+        img = ax.imshow(vol[:, :, 0], cmap='gray')
+        ax.set_title('z=0')
+        ax_slider = plt.axes([0.2, 0.05, 0.6, 0.03])
+        slider = Slider(ax_slider, 'z', 0, vol.shape[2] - 1, valinit=0, valstep=1)
+
+        def update(val):
+            z = int(slider.val)
+            img.set_data(vol[:, :, z])
+            ax.set_title(f'z={z}')
+            fig.canvas.draw_idle()
+
+        slider.on_changed(update)
+        plt.show()
 
         # 3D
         # fig = plt.figure()
@@ -151,21 +159,6 @@ def plot_reco(
         # ax.scatter(verts[:, 0], verts[:, 1], verts[:, 2], c=vol[vol > np.percentile(vol, 99)], cmap=colormap, s=1)
         # ax.set_title(names[0] if names else "Volume 3D")
         # plt.show()
-
-        # 2D with slider
-        fig, ax = plt.subplots()
-        plt.subplots_adjust(bottom=0.2)
-        img = ax.imshow(vol[:, :, 0], cmap='gray')
-        ax.set_title('Coupe z=0')
-        ax_slider = plt.axes([0.2, 0.05, 0.6, 0.03])
-        slider = Slider(ax_slider, 'z', 0, vol.shape[2] - 1, valinit=0, valstep=1)
-        def update(val):
-            z = int(slider.val)
-            img.set_data(vol[:, :, z])
-            ax.set_title(f'Coupe z={z}')
-            fig.canvas.draw_idle()
-        slider.on_changed(update)
-        plt.show()
 
         return
 
@@ -193,38 +186,21 @@ def plot_reco(
         viewer.dims.order = axes_order
         viewer.camera.orientation2d = orientation2d
 
-    # Handle single volume input
-    if isinstance(vols, np.ndarray):
-        vols = [vols]
-        detectors = [detectors] if detectors is not None else [False]
-        names = names or ["vol_1"]
-    else:
-        n = len(vols)
-        if detectors is None:
-            detectors = [False] * n
-        if names is None:
-            names = [f"vol_{i + 1}" for i in range(n)]
-
     pitch = (float(vpitch),) * 3 if np.isscalar(vpitch) else tuple(map(float, vpitch))
-    vsize = vols[0].shape
+    vsize = vol.shape
     base_translate = tuple(-(s * p) / 2.0 for s, p in zip(vsize, pitch))
 
     viewer = napari.Viewer()
-
-    for i, (vol, det, name) in enumerate(zip(vols, detectors, names)):
-        vol_i = np.array(vol, copy=True)
-        if det:
-            _mark_detector_in_volume(vol_i, det["size"], det["position"], pitch)
-        translate_i = list(base_translate)
-        translate_i[0] += i * (vsize[0] * pitch[0] + float(spacing_mm))
-        viewer.add_image(
-            vol_i,
-            name=name,
-            translate=tuple(translate_i),
-            scale=pitch,
-            colormap=colormap,
-        )
-
+    vol_i = np.array(vol, copy=True)
+    if detector:
+        _mark_detector_in_volume(vol_i, detector["size"], detector["position"], pitch)
+    viewer.add_image(
+        vol_i,
+        name=name or "volume",
+        translate=base_translate,
+        scale=pitch,
+        colormap=colormap,
+    )
     _setup_napari_viewer(viewer, axes_order, orientation2d)
     napari.run()
 

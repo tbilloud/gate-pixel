@@ -75,6 +75,5 @@ v_all = reconstruct(ev_allp, **reco)
 
 # ############################ DISPLAY  ###############################
 view = {'axes_order': (2, 0, 1), 'orientation2d': ('up', 'left'), 'colormap': 'inferno'}
-# plot_reco(v_all, vpitch=reco['vpitch'], **view)
-# plot_reco(vol_meas, vpitch=vp, detector=d_meas, **view)
-plot_reco([v_all, v_mea], names=['allpix', 'meas'], vpitch=reco['vpitch'], **view)
+plot_reco(v_all, vpitch=reco['vpitch'], **view)
+plot_reco(v_mea, vpitch=reco['vpitch'], **view)
