@@ -243,7 +243,7 @@ def reco_bp_coresi(CCevents, vpitch, vsize, cone_width, energies_MeV, tol_MeV,
         volume_config=vol,
     )
 
-    lmmlem = {'cone_thickness': cone_thickness, 'last_iter': 1, 'model': 'cos1rho2',
+    lmmlem = {'cone_thickness': cone_thickness, 'last_iter': 1, 'model': 'cos0rho0',
               'first_iter': 0, 'save_every': 1, 'checkpoint_dir': 'coresi',
               'force_spectral': False, 'n_sigma': 2, 'width_factor': cone_width,
               'sensitivity': False, 'tv': False, 'alpha_tv': 0.0}
