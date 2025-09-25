@@ -34,7 +34,7 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
         CCevents (pandas.DataFrame): DataFrame containing the cone information used for validation.
         vpitch (float): The voxel size or pitch of the volume.
         vsize (tuple[int, int, int]): The size of the volume in voxels (X, Y, Z).
-        cone_width (float): cone width (the larger the value the thicker the cones).
+        cone_width (float): cone width (the larger the value the thicker the cones). If method="coresi", only used if cone_thickness="parallel".
         log (bool): whether to log performance info
         method: "numpy", "cupy", "torch", "coresi" (see README for details)
         energies_MeV: (list[float]): select energy peaks, False to disable (default)
@@ -43,6 +43,7 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
             sensor_size (list[float])
             sensor_position (list[float]): must be same coord system as CCevents
             sensor_rotation (3×3 rotation matrix) TODO not implemented yet
+            cone_thickness: 'parallel' (default) or 'angular' (see CoReSi documentation)
     """
 
     if log:
