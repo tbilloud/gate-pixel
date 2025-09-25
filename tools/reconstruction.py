@@ -56,7 +56,7 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
         return
 
     if method == "coresi":
-        vol = reco_bp_coresi(CCevents, vpitch, vsize, cone_width * 300,
+        vol = reco_bp_coresi(CCevents, vpitch, vsize, cone_width * 100,
                              energies_MeV=energies_MeV, tol_MeV=tol_MeV, **kwargs)
     else:
         if energies_MeV:
