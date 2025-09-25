@@ -8,10 +8,8 @@ from pathlib import Path
 import os
 
 examples = list(Path('examples').glob('*.py'))
-offline = [e for e in examples if e.name.startswith('offline_')]
-others = [e for e in examples if not e.name.startswith('offline_')]
-ordered = others + offline
-for script in ordered:
+examples = [e for e in examples if not e.name.startswith('offline_')]
+for script in examples:
 
     # Avoid some scripts:
     # - the current one would loop forever
