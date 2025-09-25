@@ -125,7 +125,7 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                     # TODO: what about rayleigh scattering and pair production?
                     compton_pos = [h1[f'PostPosition_{axis}'] for axis in 'XYZ']
                     E1 = h1['TotalEnergyDeposit']
-                    photoelec_pos = [grp.iloc[1][f'PrePosition_{ax}'] for ax in 'XYZ']
+                    photoelec_pos = [grp.iloc[1][f'PostPosition_{ax}'] for ax in 'XYZ']
                     E2 = source_MeV - E1
                 # Gamma interacts via Compton, step has dE = 0 and is not stored, but recoil e- tracked with TrackID=2
                 # However I can't use direction of recoil e-... Need to go further
@@ -251,7 +251,7 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
         if track_ids[h1] == 1 and np.sum(track_ids[sorted_idx] == 1) > 1:
             compton_pos = post_pos[h1]
             E1 = total_edep[h1]
-            photoelec_pos = pre_pos[sorted_idx[1]]
+            photoelec_pos = post_pos[sorted_idx[1]]
             E2 = source_MeV - E1
         elif track_ids[h1] == 2 and creator_process[h1] == 'compt':
             compton_pos = pre_pos[h1]
