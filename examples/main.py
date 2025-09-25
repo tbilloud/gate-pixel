@@ -15,8 +15,6 @@ from tools.allpix import gHits2allpix2pixelHits
 from tools.pixelClusters import pixelHits2pixelClusters
 from tools.utils_plot import plot_energies
 
-um, mm, keV, Bq, ms = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_units.ms
-
 if __name__ == "__main__":
     ## ============================
     ## ==  RUN GATE              ==
@@ -28,7 +26,7 @@ if __name__ == "__main__":
     singles.output_filename = 'gateSingles.root'
     singles.blur_attribute = "TotalEnergyDeposit"
     singles.blur_method = "Gaussian"
-    singles.blur_fwhm = 5 * keV
+    singles.blur_fwhm = 5 * g4_units.keV
     sim.run()
 
     ## ============================
@@ -38,7 +36,7 @@ if __name__ == "__main__":
     source = sim.source_manager.get_source("source")
     file_hits = sim.output_dir / sim.actor_manager.get_actor("Hits").output_filename
     file_sgl = sim.output_dir / sim.actor_manager.get_actor("Singles").output_filename
-    npix, pitch, thick = 256, 55 * um, 1 * mm
+    npix, pitch, thick = 256, 55 * g4_units.um, 1 * g4_units.mm
     bias = -500  # in V
     mobility_e = 1000  # main charge carrier mobility in cm^2/Vs
     spd = charge_speed_mm_ns(mobility_cm2_Vs=mobility_e, bias_V=bias, thick_mm=thick)

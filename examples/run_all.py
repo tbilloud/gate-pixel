@@ -1,7 +1,7 @@
 # Runs all examples at once for testing purposes
 
-# Set to True to see messages from global_log()
-avoid_log = True
+# Set to False to see messages from global_log()
+avoid_global_log = True
 
 import subprocess
 from pathlib import Path
@@ -24,7 +24,7 @@ for script in ordered:
     env["NAPARI_HEADLESS"] = "1"
     result = subprocess.run(
         ['python', script],
-        capture_output=avoid_log,
+        capture_output=avoid_global_log,
         text=True,
         env=env
     )

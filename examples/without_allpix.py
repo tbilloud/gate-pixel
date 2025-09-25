@@ -2,12 +2,9 @@
 # - reconstruct the source
 # - visualize the result in 3D
 
-from opengate.utility import g4_units
 from examples.gate_simu import gate_simu
 from tools.reconstruction import valid_psource, reconstruct
 from tools.CCevents import gHits2CCevents
-
-um, mm, keV, Bq, ms = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_units.ms
 
 if __name__ == "__main__":
     ## ============================

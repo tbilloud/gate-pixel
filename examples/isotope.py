@@ -6,6 +6,8 @@
 # source.direction.acceptance_angle and theta_phi() modify activity with ion sources!
 
 import json
+
+from opengate import g4_units
 from opengate.utility import g4_units
 from tools.allpix import *
 from tools.utils import metric_num, charge_speed_mm_ns
@@ -15,8 +17,6 @@ from tools.utils_plot import plot_energies
 from tools.pixelClusters import *
 from tools.CCevents import pixelClusters2CCevents, local2global, gHits2CCevents
 from examples.gate_simu import gate_simu
-
-um, mm, keV, Bq, ms = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_units.ms
 
 if __name__ == "__main__":
     ## ============================
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     ## ============================
     hits = sim.actor_manager.get_actor("Hits")
     sensor = sim.volume_manager.get_volume("sensor")
-    npix, pitch, thick = 256, 55 * um, 1 * mm
+    npix, pitch, thick = 256, 55 * g4_units.um, 1 * g4_units.mm
     ghits_file = sim.output_dir / hits.output_filename
     ghits_df = uproot.open(ghits_file)[hits.name].arrays(library='pd')
     nevents = json.load(open(sim.output_dir / 'gateStats.txt'))['events']['value']

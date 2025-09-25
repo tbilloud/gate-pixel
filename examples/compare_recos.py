@@ -4,12 +4,9 @@
 
 from pathlib import Path
 from opengate.utility import g4_units
-
 from examples.gate_simu import gate_simu
 from tools.CCevents import gHits2CCevents
 from tools.reconstruction import valid_psource
-
-um, mm, keV, MeV, deg, Bq, ms, sec = g4_units.um, g4_units.mm, g4_units.keV, g4_units.MeV, g4_units.deg, g4_units.Bq, g4_units.ms, g4_units.s
 
 if __name__ == "__main__":
     ## ============================
