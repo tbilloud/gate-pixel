@@ -182,8 +182,9 @@ def reco_bp_torch(cones, vpitch, vsize, cone_width=0.01):
     return volume.cpu().numpy()
 
 
-def reco_bp_coresi(CCevents, vpitch, vsize, cone_width, sensor_size,
-                   sensor_position, sensor_rotation, energies_MeV, tol_MeV):
+def reco_bp_coresi(CCevents, vpitch, vsize, cone_width, energies_MeV, tol_MeV,
+                   sensor_size, sensor_position, sensor_rotation,
+                   cone_thickness='parallel'):
     try:
         from coresi.camera import setup_cameras
         from coresi.data import read_data_file
@@ -242,7 +243,7 @@ def reco_bp_coresi(CCevents, vpitch, vsize, cone_width, sensor_size,
         volume_config=vol,
     )
 
-    lmmlem = {'cone_thickness': 'parallel', 'last_iter': 1, 'model': 'cos1rho2',
+    lmmlem = {'cone_thickness': cone_thickness, 'last_iter': 1, 'model': 'cos1rho2',
               'first_iter': 0, 'save_every': 1, 'checkpoint_dir': 'coresi',
               'force_spectral': False, 'n_sigma': 2, 'width_factor': cone_width,
               'sensitivity': False, 'tv': False, 'alpha_tv': 0.0}
