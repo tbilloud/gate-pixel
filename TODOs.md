@@ -39,3 +39,4 @@ See https://github.com/allpix-squared/allpix-squared/pull/54
 - Add all CoReSi parameters to reco_bp_coresi() parameters
 - Allow simple back-projection without the need for sensor geometry as input
 - Allow reconstructing volumes with sensor inside it
+- Add constants for CdTe, in particular for Doppler broadening

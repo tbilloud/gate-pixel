@@ -44,6 +44,7 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
             sensor_position (list[float]): must be same coord system as CCevents
             sensor_rotation (3×3 rotation matrix) TODO not implemented yet
             cone_thickness: 'parallel' (default) or 'angular' (see CoReSi documentation)
+                TODO if 'angular', doppler broadening is taken into account, but the correction only fits Silicon
     """
 
     if log:
