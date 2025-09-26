@@ -24,7 +24,7 @@ def gate_simu(sensor_material="G4_CADMIUM_TELLURIDE"):
     sensor = sim.add_volume("Box", "sensor")
     sensor.material = sensor_material  # 'G4_Si', 'G4_CADMIUM_TELLURIDE'
     sensor.size = [npix * pitch, npix * pitch, thick]
-    sensor.translation = [0 * um, 0 * um, 10 * mm]
+    sensor.translation = [0 * mm, 0 * mm, 10 * mm]
     setup_pixels(sim, npix, sensor, pitch, thick)
 
     ## ===========================
