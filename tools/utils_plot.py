@@ -248,7 +248,10 @@ def compare_pixelClusters(
 def compare_recos(volumes, names=None):
     """
     Compare multiple volumes side-by-side.
-    For each volume, 3 slices (first, middle, last) along the 3rd axis are plotted.
+    For each volume, 5 slices along the 3rd axis are plotted.
+    => This allows, when the source is in the center and the detector along the 3rd axis,
+       to check for misconfiguration in the geometry:
+       the source, the detector, behind the detector and the opposite sides.
     Volumes are normalized to their maximum intensity value.
 
     Args:
@@ -268,10 +271,12 @@ def compare_recos(volumes, names=None):
 
     volumes = [vol / np.max(vol) if np.max(vol) else vol for vol in volumes]
     names = names if names else [f'Volume {i + 1}' for i in range(len(volumes))]
-    slices = [0, int(volumes[0].shape[2] / 2), volumes[0].shape[2] - 1]
+    slices = np.linspace(0, volumes[0].shape[2] - 1, 5, dtype=int).tolist()
     vmin = min(np.nanmin(vol) for vol in volumes)
     vmax = max(np.nanmax(vol) for vol in volumes)
     fig, axes = plt.subplots(len(slices), len(volumes), figsize=(8, 3 * len(slices)))
+    if len(volumes) == 1:
+        axes = np.array(axes).reshape(-1, 1)
     for i, z in enumerate(slices):
         for j, (vol, name) in enumerate(zip(volumes, names)):
             ax = axes[i, j]
