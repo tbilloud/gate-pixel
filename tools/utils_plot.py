@@ -265,7 +265,8 @@ def compare_recos(volumes, names=None):
     """
     if len({vol.shape for vol in volumes}) != 1:
         raise ValueError("In volumes must have the same shape.")
-    volumes = [vol / np.max(vol) for vol in volumes]
+
+    volumes = [vol / np.max(vol) if np.max(vol) else vol for vol in volumes]
     names = names if names else [f'Volume {i + 1}' for i in range(len(volumes))]
     slices = [0, int(volumes[0].shape[2] / 2), volumes[0].shape[2] - 1]
     vmin = min(np.nanmin(vol) for vol in volumes)

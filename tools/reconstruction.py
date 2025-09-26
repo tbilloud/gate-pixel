@@ -54,7 +54,7 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
     if CCevents is None or len(CCevents) == 0:
         global_log.error("Empty input.")
         global_log.info(f"Offline [reconstruction]: {get_stop_string(stime)}")
-        return
+        return np.zeros(vsize, dtype=np.float32)
 
     if method == "coresi":
         vol = reco_bp_coresi(CCevents, vpitch, vsize, cone_width * 100,
