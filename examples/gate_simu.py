@@ -9,7 +9,7 @@ from tools.utils_opengate import setup_pixels
 
 um, mm, keV, Bq, ms = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_units.ms
 
-def gate_simu():
+def gate_simu(sensor_material="G4_CADMIUM_TELLURIDE"):
     sim, sim.output_dir = Simulation(), Path("output")
     sim.random_engine, sim.random_seed = "MersenneTwister", 1
     sim.visu = False
@@ -22,7 +22,7 @@ def gate_simu():
     sim.world.size = [15 * mm, 15 * mm, 30 * mm]
     sim.world.material = "G4_AIR"
     sensor = sim.add_volume("Box", "sensor")
-    sensor.material = "G4_CADMIUM_TELLURIDE"  # 'G4_Si', 'G4_CADMIUM_TELLURIDE'
+    sensor.material = sensor_material  # 'G4_Si', 'G4_CADMIUM_TELLURIDE'
     sensor.size = [npix * pitch, npix * pitch, thick]
     sensor.translation = [0 * um, 0 * um, 10 * mm]
     setup_pixels(sim, npix, sensor, pitch, thick)
