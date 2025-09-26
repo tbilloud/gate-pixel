@@ -74,7 +74,7 @@ if __name__ == "__main__":
     # For In111
     # p_keV = 245.390
     # source_str ='Cd111[245.390]_' + str(p_keV)
-    # cones_ref = gHits2CCevents(ghits_file, source_MeV=source_str)
+    # coin_ref = gHits2CCevents(ghits_file, source_MeV=source_str)
 
     # ################################ ALLPIX  #########################################
 
