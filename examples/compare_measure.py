@@ -1,6 +1,7 @@
 # Show how to compare measurement with simulation
 
 from pathlib import Path
+import numpy as np
 from pandas import read_csv
 from tools.CCevents import local2global, pixelClusters2CCevents, gHits2CCevents
 from tools.utils import charge_speed_mm_ns, create_sensor_object
@@ -51,8 +52,7 @@ clust_sgls = pixelHits2pixelClusters(hits_sgls, window_ns=100, npix=256)
 eClstrMax = 260
 clust_meas = clust_meas[clust_meas[ENERGY_keV] < eClstrMax]
 clust_allp = clust_allp[clust_allp[ENERGY_keV] < eClstrMax]
-compare_pixelClusters(clust_meas, clust_allp, name_a='Measurement', name_b='Allpix',
-                      energy_bins=eClstrMax)
+# compare_pixelClusters(clust_meas, clust_allp, name_a='Measurement', name_b='Allpix', energy_bins=eClstrMax)
 
 # ######################## CCevents  ################################
 ev_meas = pixelClusters2CCevents(clust_meas, thick=thick, speed=spd, twindow=100)
@@ -70,11 +70,12 @@ ev_meas = local2global(ev_meas, s.translation, s.rotation, npix, pitch, thick)
 ev_allp = local2global(ev_allp, s.translation, s.rotation, npix, pitch, thick)
 ev_refc = gHits2CCevents(path_sim / 'gateHits.root', source_MeV='Cd111[245.390]_245.390', entry_stop=nhits * 50)
 reco_params = {'method': 'torch',
-               'vpitch': 2, 'vsize': (256, 256, 120), 'cone_width': 0.05,
+               'vpitch': 10, 'vsize': (32, 32, 32), 'cone_width': 0.05,
                'energies_MeV': [source_MeV], 'tol_MeV': 0.03}
 v_meas = reconstruct(ev_meas, **reco_params)
 v_allp = reconstruct(ev_allp, **reco_params)
 v_refc = reconstruct(ev_refc, **reco_params)
+# v_meas = np.flip(v_meas, axis=2)
 
 # ############################ DISPLAY  ###############################
 compare_recos([v_meas, v_allp, v_refc], names=['Measurement', 'Allpix', 'Reference'])
