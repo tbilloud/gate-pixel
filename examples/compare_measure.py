@@ -2,14 +2,14 @@
 
 from pathlib import Path
 from pandas import read_csv
-from tools.CCevents import local2global, pixelClusters2CCevents
+from tools.CCevents import local2global, pixelClusters2CCevents, gHits2CCevents
 from tools.utils import charge_speed_mm_ns, create_sensor_object
 from tools.pixelHits import ENERGY_keV, remove_edge_pixels, singles2pixelHits
 from tools.pixelClusters_custom import pixelHits2pixelClusters
 from tools.reconstruction import valid_psource, reconstruct
-from tools.utils_plot import compare_pixelClusters, plot_energies, plot_reco
+from tools.utils_plot import compare_pixelClusters, plot_energies, compare_recos
 
-path = Path('/media/billoud/029A94FF9A94F101/2nd_DRIVE')
+path = Path('/Users/thomas/DATA')
 path_meas = path / 'TIMEPIX3/Adavapix_TPX3_2mm_CdTe/In_5deg_pixelHits.csv'
 path_sim = path / 'SIMULATION/advapix_In111/ion_49_111_detX11.33mm_detZ-129.5mm/4500kBq_20s/'
 sensor_pos = [11.33, 0., -128.5]
@@ -21,7 +21,7 @@ spd = charge_speed_mm_ns(mobility_cm2_Vs=1000, bias_V=450, thick_mm=thick)
 single_file, single_name = path_sim / 'gateSingles_blur.root', 'Single_b'
 
 # ########################## HITS  ##################################
-nhits = 100_000
+nhits = 10_000
 hits_meas = read_csv(path_meas, nrows=nhits)
 hits_allp = read_csv(path_sim / 'pixelHits_allpix.csv', nrows=nhits)
 hits_sgls = singles2pixelHits(single_file, spd, thick, single_name, nrows=nhits)
@@ -51,15 +51,15 @@ clust_sgls = pixelHits2pixelClusters(hits_sgls, window_ns=100, npix=256)
 eClstrMax = 260
 clust_meas = clust_meas[clust_meas[ENERGY_keV] < eClstrMax]
 clust_allp = clust_allp[clust_allp[ENERGY_keV] < eClstrMax]
-compare_pixelClusters(clust_meas, clust_allp, name_a='Measurement', name_b='Allpix', energy_bins=eClstrMax)
+compare_pixelClusters(clust_meas, clust_allp, name_a='Measurement', name_b='Allpix',
+                      energy_bins=eClstrMax)
 
 # ######################## CCevents  ################################
 ev_meas = pixelClusters2CCevents(clust_meas, thick=thick, speed=spd, twindow=100)
 ev_allp = pixelClusters2CCevents(clust_allp, thick=thick, speed=spd, twindow=100)
 ev_sgls = pixelClusters2CCevents(clust_sgls, thick=thick, speed=spd, twindow=100)
-
 plot_energies(min_keV=0, max_keV=260,
-              names=['Measurement', 'Allpix','Singles'],
+              names=['Measurement', 'Allpix', 'Singles'],
               hits_list=[hits_meas, hits_allp, hits_sgls],
               clusters_list=[clust_meas, clust_allp, clust_sgls],
               CCevents_list=[ev_meas, ev_allp, ev_sgls],
@@ -68,12 +68,13 @@ plot_energies(min_keV=0, max_keV=260,
 # ############################## RECO  ###############################
 ev_meas = local2global(ev_meas, s.translation, s.rotation, npix, pitch, thick)
 ev_allp = local2global(ev_allp, s.translation, s.rotation, npix, pitch, thick)
-reco = {'vpitch': 2, 'vsize': (256, 256, 120), 'cone_width': 0.05, 'method': 'torch',
-        'energies_MeV': [source_MeV], 'tol_MeV': 0.03}
-v_mea = reconstruct(ev_meas, **reco)
-v_all = reconstruct(ev_allp, **reco)
+ev_refc = gHits2CCevents(path_sim / 'gateHits.root', source_MeV='Cd111[245.390]_245.390', entry_stop=nhits * 50)
+reco_params = {'method': 'torch',
+               'vpitch': 2, 'vsize': (256, 256, 120), 'cone_width': 0.05,
+               'energies_MeV': [source_MeV], 'tol_MeV': 0.03}
+v_meas = reconstruct(ev_meas, **reco_params)
+v_allp = reconstruct(ev_allp, **reco_params)
+v_refc = reconstruct(ev_refc, **reco_params)
 
 # ############################ DISPLAY  ###############################
-view = {'axes_order': (2, 0, 1), 'orientation2d': ('up', 'left'), 'colormap': 'inferno'}
-plot_reco(v_all, vpitch=reco['vpitch'], **view)
-plot_reco(v_mea, vpitch=reco['vpitch'], **view)
+compare_recos([v_meas, v_allp, v_refc], names=['Measurement', 'Allpix', 'Reference'])

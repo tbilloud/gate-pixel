@@ -243,3 +243,39 @@ def compare_pixelClusters(
     plt.tight_layout()
     plt.show()
     return fig, axes
+
+
+def compare_recos(volumes, names=None):
+    """
+    Compare multiple volumes side-by-side.
+    For each volume, 3 slices (first, middle, last) along the 3rd axis are plotted.
+    Volumes are normalized to their maximum intensity value.
+
+    Args:
+        volumes (list of np.ndarray): List of 3D volumes to compare.
+            All volumes must have the same shape.
+        names (list of str, optional): List of names for each volume.
+            If None, default names will be generated.
+
+    Raises:
+        ValueError: If the volumes do not all have the same shape.
+
+    Returns:
+        None: Displays the volumes as matplotlib figures.
+    """
+    if len({vol.shape for vol in volumes}) != 1:
+        raise ValueError("In volumes must have the same shape.")
+    volumes = [vol / np.max(vol) for vol in volumes]
+    names = names if names else [f'Volume {i + 1}' for i in range(len(volumes))]
+    slices = [0, int(volumes[0].shape[2] / 2), volumes[0].shape[2] - 1]
+    vmin = min(np.nanmin(vol) for vol in volumes)
+    vmax = max(np.nanmax(vol) for vol in volumes)
+    fig, axes = plt.subplots(len(slices), len(volumes), figsize=(8, 3 * len(slices)))
+    for i, z in enumerate(slices):
+        for j, (vol, name) in enumerate(zip(volumes, names)):
+            ax = axes[i, j]
+            ax.imshow(vol[:, :, z], cmap='inferno', vmin=vmin, vmax=vmax)
+            ax.set_title(f'{name} - z={z}')
+            ax.axis('off')
+    plt.tight_layout()
+    plt.show()
