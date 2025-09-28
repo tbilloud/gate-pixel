@@ -99,7 +99,7 @@ def plot_energies(
 
 def plot_reco(
         vol,
-        vpitch,
+        vpitch = None,
         detector=None,
         axes_order=(0, 1, 2),
         orientation2d=("up", "right"),
@@ -112,7 +112,7 @@ def plot_reco(
 
     Args:
         vol (np.ndarray): Volume to display.
-        vpitch (float or tuple): Voxel size (mm).
+        vpitch (float, optional): Voxel size (mm), used to show scale and detector.
         detector (dict, optional): Detector info to mark.
         axes_order (tuple): Axes order for napari.
         orientation2d (tuple): 2D orientation for napari.
@@ -123,7 +123,6 @@ def plot_reco(
     try:
         import napari
     except ImportError:
-        from opengate.logger import global_log
         global_log.warning("Napari not installed, using matplotlib.")
 
         if sys.platform == "darwin":
@@ -150,16 +149,6 @@ def plot_reco(
 
         slider.on_changed(update)
         plt.show()
-
-        # 3D
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111, projection='3d')
-        # # Affichage d'un isosurface simple (seuil arbitraire)
-        # verts = np.argwhere(vol > np.percentile(vol, 99))
-        # ax.scatter(verts[:, 0], verts[:, 1], verts[:, 2], c=vol[vol > np.percentile(vol, 99)], cmap=colormap, s=1)
-        # ax.set_title(names[0] if names else "Volume 3D")
-        # plt.show()
-
         return
 
     def _mark_detector_in_volume(vol, size, position, vpitch):
@@ -186,19 +175,24 @@ def plot_reco(
         viewer.dims.order = axes_order
         viewer.camera.orientation2d = orientation2d
 
-    pitch = (float(vpitch),) * 3 if np.isscalar(vpitch) else tuple(map(float, vpitch))
-    vsize = vol.shape
-    base_translate = tuple(-(s * p) / 2.0 for s, p in zip(vsize, pitch))
+    if vpitch:
+        pitch = (float(vpitch),) * 3
+        vsize = vol.shape
+        base_translate = tuple(-(s * p) / 2.0 for s, p in zip(vsize, pitch))
 
     viewer = napari.Viewer()
     vol_i = np.array(vol, copy=True)
+    global_log.error('test')
     if detector:
-        _mark_detector_in_volume(vol_i, detector["size"], detector["position"], pitch)
+        if vpitch:
+            _mark_detector_in_volume(vol_i, detector["size"], detector["position"], pitch)
+        else:
+            global_log.error("vpitch must be specified to mark detector.")
     viewer.add_image(
         vol_i,
         name=name or "volume",
-        translate=base_translate,
-        scale=pitch,
+        translate=base_translate if vpitch else None,
+        scale=pitch if vpitch else None,
         colormap=colormap,
     )
     _setup_napari_viewer(viewer, axes_order, orientation2d)
