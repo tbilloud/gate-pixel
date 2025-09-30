@@ -20,7 +20,6 @@ if __name__ == "__main__":
     ## ==  RUN GATE              ==
     ## ============================
     sim = gate_simu()
-    sim.random_engine, sim.random_seed = "MersenneTwister", 1
     singles = sim.add_actor("DigitizerBlurringActor", "Singles")
     singles.authorize_repeated_volumes = True
     singles.output_filename = 'gateSingles.root'
