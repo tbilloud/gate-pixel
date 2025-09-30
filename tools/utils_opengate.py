@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import SimpleITK as sitk
+import opengate_core
 import pandas as pd
 import uproot
 from matplotlib import pyplot as plt
@@ -32,6 +33,14 @@ def setup_pixels(sim, npix, sensor, pitch, thickness):
         sim.volume_manager.add_volume(par)
     else:
         global_log.warning("VISUALIZATION MODE. DETECTOR NOT SIMULATED.")
+
+def setup_hits(sim, sensor_name, output_filename='gateHits.root'):
+    hits = sim.add_actor('DigitizerHitsCollectionActor', 'Hits')
+    hits.attached_to = sensor_name
+    hits.authorize_repeated_volumes = True
+    hits.attributes = opengate_core.GateDigiAttributeManager.GetInstance().GetAvailableDigiAttributeNames()
+    hits.output_filename = output_filename
+    return hits
 
 
 def theta_phi(sensor, source, sim = None, extra_spread=1):
