@@ -319,7 +319,7 @@ def pixelClusters2CCevents(pixelClusters, thick, speed, twindow):
 
     if not len(pixelClusters):
         global_log.error(f"Empty input (no clusters in dataframe).")
-        global_log.info(f"Offline [pixelClusters]: {get_stop_string(stime)}")
+        global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
         return pandas.DataFrame()
     else:
         global_log.debug(f"Input: {len(pixelClusters)} pixel clusters")
