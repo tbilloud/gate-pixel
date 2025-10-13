@@ -17,7 +17,7 @@ if __name__ == "__main__":
     sim.world.material = "G4_AIR"
     sim.physics_manager.physics_list_name = 'G4EmLivermorePhysics' # for Doppler
     # set_fluorescence(sim)
-    sim.run_timing_intervals = [[0, 1e5 * g4_units.ms]]
+    sim.run_timing_intervals = [[0, 1e4 * g4_units.ms]]
     sim.run()
 
     ## ============================

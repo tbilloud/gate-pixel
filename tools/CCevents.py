@@ -4,14 +4,10 @@
 # 2) a 2nd interaction, which might be a photo-electric absorption or another Compton interaction.
 #    => in either case, the energy (E2) should be that of the initially scattered gamma (Egamma - E1)
 
-import os
-import time
 import numpy as np
 import pandas
 import uproot
-
-from tools.utils import global_log_debug_df, get_stop_string, \
-    localFractional2globalCoordinates
+from tools.utils import localFractional2globalCoordinates, log_offline_process
 from tools.pixelHits import TOA, ENERGY_keV, EVENTID
 from tools.pixelClusters import PIX_X_ID, PIX_Y_ID
 
@@ -30,6 +26,7 @@ for i in range(2):
                          f'PositionZ_{i + 1}', f'Energy (keV)_{i + 1}']
 
 
+@log_offline_process('CCevents', input_type = 'file')
 def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                              entry_stop=None):
     """
@@ -61,16 +58,9 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
     Returns:
         pandas.DataFrame: DataFrame containing CCevents.
     """
-    stime = time.time()
-    global_log.info(f"Offline [CCevents]: START")
-    if not os.path.isfile(file_path):
-        global_log.error(f"File {file_path} does not exist, probably no hit produced.")
-        global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
-        return pandas.DataFrame()
 
-    stime = time.time()
     hits_df = uproot.open(file_path)['Hits'].arrays(library='pd', entry_stop=entry_stop)
-    global_log.debug(f"Input {file_path} ({len(hits_df)} entries)")
+
     grouped = hits_df.groupby('EventID')
     CCevents = []
 
@@ -150,27 +140,19 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
     global_log.debug(f"=> {n_events_full_edep} with full energy deposited in sensor")
     global_log.debug(f"  => {len(CCevents)} with at least one Compton interaction")
-    global_log.info(f"Offline [CCevents]: {len(CCevents)} events")
-    global_log_debug_df(df)
-    global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
+
     return df
 
 
+@log_offline_process('CCevents', input_type = 'file')
 def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
     """
     Same as gHits2CCevents_prototype but faster implementation using NumPy arrays.
     Obtained from GPT-4.1 by feeding it the prototype and asking for optimizations.
     => about 10x faster when used in isotope.py example
     """
-    stime = time.time()
-    global_log.info(f"Offline [CCevents]: START")
-    if not os.path.isfile(file_path):
-        global_log.error(f"File {file_path} does not exist, probably no hit produced.")
-        global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
-        return pandas.DataFrame()
 
     hits_df = uproot.open(file_path)['Hits'].arrays(library='pd', entry_stop=entry_stop)
-    global_log.debug(f"Input {file_path} ({len(hits_df)} entries)")
 
     # Pre-convert columns to NumPy arrays for fast access
     event_ids = hits_df['EventID'].to_numpy()
@@ -180,7 +162,6 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
     total_edep = hits_df['TotalEnergyDeposit'].to_numpy()
     kinetic_energy = hits_df['KineticEnergy'].to_numpy()
     creator_process = hits_df['TrackCreatorProcess'].astype(str).to_numpy()
-    particle_names = hits_df['ParticleName'].astype(str).to_numpy()
     global_time = hits_df['GlobalTime'].to_numpy()
     # Pre/Post positions
     pre_pos = np.stack([hits_df[f'PrePosition_{ax}'].to_numpy() for ax in 'XYZ'],
@@ -288,12 +269,11 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
     global_log.debug(f"=> {n_events_full_edep} with full energy deposited in sensor")
     global_log.debug(f"  => {len(CCevents)} with at least one Compton interaction")
-    global_log.info(f"Offline [CCevents]: {len(CCevents)} output entries")
-    global_log_debug_df(df)
-    global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
+
     return df
 
 
+@log_offline_process('CCevents', input_type = 'dataframe')
 def pixelClusters2CCevents(pixelClusters, thick, speed, twindow):
     """
     Converts a DataFrame of pixel clusters into Compton camera events (CCevents) by grouping clusters
@@ -314,15 +294,6 @@ def pixelClusters2CCevents(pixelClusters, thick, speed, twindow):
         - Only events with exactly two clusters within the time window are considered.
         - The z-coordinate is reconstructed using the time difference and charge propagation speed.
     """
-    stime = time.time()
-    global_log.info(f"Offline [CCevents]: START")
-
-    if not len(pixelClusters):
-        global_log.error(f"Empty input (no clusters in dataframe).")
-        global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
-        return pandas.DataFrame()
-    else:
-        global_log.debug(f"Input: {len(pixelClusters)} pixel clusters")
 
     # Group pixelClusters by time
     pixelClusters_copy = pixelClusters.copy()
@@ -381,9 +352,6 @@ def pixelClusters2CCevents(pixelClusters, thick, speed, twindow):
         CCevents_df = pandas.DataFrame(CCevents,
                                        columns=[EVENTID] + CCevents_columns)
 
-    global_log.info(f"Offline [CCevents]: {len(CCevents_df)} cones")
-    global_log_debug_df(CCevents_df)
-    global_log.info(f"Offline [CCevents]: {get_stop_string(stime)}")
     return CCevents_df
 
 
@@ -404,26 +372,18 @@ def local2global(CCevents, translation, rotation, npix, pitch, thickness):
         DataFrame: Updated DataFrame with position columns replaced by global coordinates.
     """
 
-    global_log.info(f"Offline [transform coord]: START")
-    stime = time.time()
-
     df_copy = CCevents.copy()
-    if df_copy.empty:
-        global_log.error('Input DataFrame is empty. No coordinates to convert.')
-    else:
-        for i in range(1, 3):  # For each event (1, 2)
-            position_cols = [f"PositionX_{i}", f"PositionY_{i}", f"PositionZ_{i}"]
+    for i in range(1, 3):  # For each event (1, 2)
+        position_cols = [f"PositionX_{i}", f"PositionY_{i}", f"PositionZ_{i}"]
 
-            def convert_row(row):
-                c = [row[col] for col in position_cols]
-                return localFractional2globalCoordinates(c, translation, rotation, npix,
-                                                         pitch, thickness)
+        def convert_row(row):
+            c = [row[col] for col in position_cols]
+            return localFractional2globalCoordinates(c, translation, rotation, npix,
+                                                     pitch, thickness)
 
-            coords = df_copy.apply(convert_row, axis=1, result_type='expand')
-            df_copy[position_cols] = coords
+        coords = df_copy.apply(convert_row, axis=1, result_type='expand')
+        df_copy[position_cols] = coords
 
-        global_log_debug_df(df_copy)
-    global_log.info(f"Offline [transform coord]: {get_stop_string(stime)}")
     return df_copy
 
 

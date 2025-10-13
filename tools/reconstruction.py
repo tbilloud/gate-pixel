@@ -10,10 +10,10 @@ from matplotlib.gridspec import GridSpec
 from scipy.optimize import curve_fit
 
 from tools.CCevents import select_CCevents_energies
-from tools.utils import get_stop_string
 from tools.pixelHits import EVENTID
 from tools.CCcones import APEX_X, APEX_Y, APEX_Z, DIRECTION_X, DIRECTION_Y, \
     DIRECTION_Z, COS, CCevents2CCcones
+from tools.utils import log_offline_process
 
 try:
     from opengate.logger import global_log
@@ -24,9 +24,9 @@ except ImportError:
     global_log.addHandler(logging.NullHandler())
 
 
+@log_offline_process('reconstruct', input_type = 'dataframe')
 def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
-                cone_width=0.01, log=True, method="numpy",
-                **kwargs):
+                cone_width=0.01, method="numpy", **kwargs):
     """
     Unified reconstruction interface.
 
@@ -47,15 +47,6 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
                 TODO if 'angular', doppler broadening is taken into account, but the correction only fits Silicon
     """
 
-    if log:
-        global_log.info(f"Offline [reconstruction][{method}]: START")
-    stime = time.time()
-
-    if CCevents is None or len(CCevents) == 0:
-        global_log.error("Empty input.")
-        global_log.info(f"Offline [reconstruction]: {get_stop_string(stime)}")
-        return np.zeros(vsize, dtype=np.float32)
-
     if method == "coresi":
         vol = reco_bp_coresi(CCevents, vpitch, vsize, cone_width * 100,
                              energies_MeV=energies_MeV, tol_MeV=tol_MeV, **kwargs)
@@ -74,9 +65,6 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
         #     vol = reco_custom(CCevents, vpitch, vsize, cone_width)
         else:
             raise ValueError(f"Unknown method: {method}")
-
-    if log:
-        global_log.info(f"Offline [reconstruction][{method}]: {get_stop_string(stime)}")
 
     return vol
 
@@ -305,15 +293,6 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=
     Returns:
         numpy.ndarray: The reconstructed slice at the source position.
     """
-    stime = time.time()
-    global_log.info(f'Offline [validate source]: START')
-    if not len(CCevents):
-        global_log.error(f"Empty input (no cones in dataframe).")
-        global_log.info(
-            f"Offline [validate source]: {get_stop_string(stime)}")
-        return
-    else:
-        global_log.debug(f"Input: {len(CCevents)} CCevents")
 
     # Source position must be in units of voxels in vol
     sp_vox = [int(src_pos[i] / vpitch) + (vsize[i] // 2) for i in range(3)]
@@ -441,7 +420,5 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=
             np.save(parent / f"{base}_3D.npy", vol)
         else:
             plt.show()
-
-    global_log.info(f"Offline [validate source]: {get_stop_string(stime)}")
 
     return z_slice_stack, vsize

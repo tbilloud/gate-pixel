@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Iterable, Iterator, List, Tuple, Dict, Optional
 import heapq
 
-from tools.utils import global_log_debug_df, get_stop_string
+from tools.utils import log_offline_process
 from tools.utils_opengate import get_global_log
 from tools.pixelHits import ENERGY_keV, TOA
 from tools.pixelClusters import PIX_X_ID, PIX_Y_ID, SIZE, DELTA_TOA
@@ -333,15 +333,8 @@ def df_to_xyte_array(
     return out
 
 
+@log_offline_process('pixelClusters', input_type = 'dataframe')
 def pixelHits2pixelClusters(pixelHits_df, window_ns, npix):
-    stime = time.time()
-    global_log.info(f"Offline [pixelClusters]: START")
-
-    if pixelHits_df.empty:
-        global_log.error(
-            "Offline [pixelClusters]: Empty pixel hits dataframe, probably no hit produced.")
-        global_log.info(f"Offline [pixelClusters]: {get_stop_string(stime)}")
-        return []
 
     global_log.debug(f"Input pixel hits dataframe with {len(pixelHits_df)} entries")
 
@@ -349,7 +342,4 @@ def pixelHits2pixelClusters(pixelHits_df, window_ns, npix):
     clusters = process_pixels(hits_meas_array, window=window_ns)
     clusters_centroid_df = to_pixelCluster_df(clusters)
 
-    global_log.debug(f"{len(clusters_centroid_df)} clusters")
-    global_log_debug_df(clusters_centroid_df)
-    global_log.info(f"Offline [pixelClusters]: {get_stop_string(stime)}")
     return clusters_centroid_df

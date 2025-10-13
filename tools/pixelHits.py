@@ -5,14 +5,12 @@ import pandas
 import pandas as pd
 import uproot
 import sys
-import time
 import matplotlib.colors as mcolors
 from matplotlib.ticker import MaxNLocator
 import xml.etree.ElementTree as ET
 import base64
 import numpy as np
-
-from tools.utils import get_pixID, global_log_debug_df, get_stop_string, get_pixID_2D
+from tools.utils import get_pixID, get_pixID_2D, log_offline_process
 
 try:
     from opengate.logger import global_log
@@ -30,7 +28,7 @@ TOT = 'ToT'
 pixelHits_columns = [PIXEL_ID, TOA, ENERGY_keV]  # ADD / REMOVE columns as needed
 EVENTID = 'EventID'  # optional, used for simulated hits only
 
-
+@log_offline_process('pixelHits', input_type = 'file')
 def singles2pixelHits(file_path, speed, thick, actor='Singles', nrows=None):
     """
     Converts a ROOT file containing Gate singles into a DataFrame of pixelHits.
@@ -45,14 +43,8 @@ def singles2pixelHits(file_path, speed, thick, actor='Singles', nrows=None):
     Returns:
         pandas.DataFrame: DataFrame containing pixelHits.
     """
-    if not os.path.isfile(file_path):
-        sys.exit(
-            f"Offline [pixelHits]: {file_path} does not exist, probably no hit produced...")
-    else:
-        global_log.info(f"Offline [pixelHits]: START")
-    stime = time.time()
+
     singles = uproot.open(file_path)[actor].arrays(library='pd', entry_stop=nrows)
-    global_log.debug(f"Input {file_path}, {len(singles)} entries")
     singles['HitUniqueVolumeID'] = singles['HitUniqueVolumeID'].astype(
         str).str.replace(r'0_', '', regex=True)
     singles.rename(columns={'HitUniqueVolumeID': PIXEL_ID}, inplace=True)
@@ -64,8 +56,7 @@ def singles2pixelHits(file_path, speed, thick, actor='Singles', nrows=None):
     singles.rename(columns={'GlobalTime': TOA}, inplace=True)
     singles[TOT] = singles[ENERGY_keV] * 1e3  # TODO temporary
     singles = singles[[EVENTID] + pixelHits_columns]
-    global_log_debug_df(singles)
-    global_log.info(f"Offline [pixelHits]: {get_stop_string(stime)}")
+
     return singles[[EVENTID] + pixelHits_columns]
 
 
@@ -203,14 +194,6 @@ def pixelHits2burdaman(pixelHits_df, out_path):
 
 # TODO adapt to different simulation chains
 def allpixTxt2pixelHit(text_file, n_pixels=256):
-    stime = time.time()
-    global_log.info(f"Offline [pixelHits]: START")
-    if os.path.isfile(text_file.with_suffix('.txt')):
-        global_log.debug(f"Input {text_file}")
-    else:
-        global_log.error(f"{text_file} does not exist.")
-        global_log.info(f"Offline [pixelHits]: {get_stop_string(stime)}")
-        return pandas.DataFrame()
 
     rows = []
     with open(text_file.with_suffix('.txt'), "r") as file:
@@ -246,15 +229,12 @@ def allpixTxt2pixelHit(text_file, n_pixels=256):
                 })
 
     df = pd.DataFrame(rows, columns=[EVENTID] + pixelHits_columns)
-    if len(df) == 0:
-        global_log.error(
-            f"Offline [pixelHits]: Empty pixel hits dataframe, probably no hit produced.")
-    global_log_debug_df(df)
-    global_log.info(f"Offline [pixelHits]: {get_stop_string(stime)}")
+
     return df
 
 
 # TODO: check for ToA overflow
+@log_offline_process('pixelHits', input_type = 'file')
 def pixet2pixelHit(t3pa_file, calib, chipID=None, nrows=None):
     """
     Convert pixel hits and calibration from ADVACAM/PIXET to a pixelHit DataFrame.
@@ -272,10 +252,6 @@ def pixet2pixelHit(t3pa_file, calib, chipID=None, nrows=None):
     The XML file and chip ID are provided when purchasing a detector.
     """
     df = pd.read_csv(t3pa_file, sep='\t', index_col='Index', nrows=nrows)
-
-    global_log.info(f"Offline [pixelHits]: START")
-    global_log.debug(f"Inputs:\n{t3pa_file}\n{calib}, {len(df)} entries")
-    stime = time.time()
 
     # ===========================
     # ==  TIME CALIBRATION     ==
@@ -345,11 +321,6 @@ def pixet2pixelHit(t3pa_file, calib, chipID=None, nrows=None):
     df = df.drop(columns=['ToA', 'ToT', 'FToA', 'Overflow'])
     df = df.rename(columns={'Matrix Index': 'PixelID (int16)'})
 
-    if len(df) == 0:
-        global_log.error(
-            f"Offline [pixelHits]: Empty pixel hits dataframe, probably no hit produced.")
-    global_log_debug_df(df)
-    global_log.info(f"Offline [pixelHits]: {get_stop_string(stime)}")
     return df
 
 

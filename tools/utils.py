@@ -1,9 +1,13 @@
 # Some utility functions
-# WARNING: For print functions, make sure that dataframe columns are present in simulation settings (c.f. actor attribtues)
+# WARNING: For print functions, make sure that dataframe columns are present in simulation settings (c.f. actor attributes)
+
+import os
 import sys
 import time
 import importlib.metadata
+from pathlib import Path
 import numpy as np
+import pandas
 
 try:
     from opengate.logger import global_log
@@ -133,17 +137,6 @@ def coordinateOrigin2arrayCenter(cp_array, vpitch, vsize):
     cp_array[:, 2] = cp_array[:, 2] + vpitch * vsize[2] / 2
     return cp_array
 
-
-def get_stop_string(stime):
-    return f"STOP. Time: {time.time() - stime:.1f} seconds.\n" + '-' * 80
-
-
-def global_log_debug_df(df):
-    """
-    Print preview (head) of the dataframe
-    """
-    if not df.empty:
-        global_log.debug(f"Output preview:\n{df.head().to_string(index=False)}")
 
 def global2localFractionalCoordinates(g, sensor, npix):
     pitch = sensor.size[0] / npix  # mm
@@ -275,3 +268,37 @@ def compton_cos_theta(E1_MeV, source_MeV):
     denominator = source_MeV * (source_MeV - E1_MeV)
     cos_theta = 1 - numerator / denominator
     return cos_theta
+
+
+def log_offline_process(object_name, input_type):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            stime = time.time()
+            global_log.info(f"Offline [{object_name}]: START")
+
+            if input_type == 'file':
+                if not os.path.isfile(args[0]):
+                    global_log.error(f"Offline [{object_name}]: Input file '{args[0]}' not found.")
+            elif input_type == 'dataframe':
+                if args[0].empty:
+                    global_log.error(f"Offline [{object_name}]: Input dataframe is empty.")
+            elif input_type == 'sim':
+                f = Path(args[0].output_dir) / args[0].actor_manager.get_actor("Hits").output_filename
+                f = os.path.join(os.getcwd(), f)
+                if not os.path.isfile(f):
+                    global_log.error(f"Offline [{object_name}]: Input simulation not found.")
+            else:
+                raise ValueError("input_type must be 'file', 'dataframe' or 'sim'")
+
+            result = func(*args, **kwargs)
+
+            if isinstance(result, pandas.DataFrame):
+                global_log.debug(f"Offline [{object_name}]: {len(result)} output rows.")
+                global_log.debug(f"Preview:\n{result.head().to_string(index=False)}")
+
+            stop_string = f"STOP. Time: {time.time() - stime:.1f} seconds.\n" + '-' * 80
+            global_log.info(f"Offline [{object_name}]: {stop_string}")
+
+            return result
+        return wrapper
+    return decorator

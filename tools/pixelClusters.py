@@ -4,7 +4,7 @@
 
 import time
 import pandas as pd
-from tools.utils import get_pixID_2D, get_stop_string, global_log_debug_df
+from tools.utils import get_pixID_2D, log_offline_process
 from tools.pixelHits import PIXEL_ID, TOA, ENERGY_keV, EVENTID
 
 try:
@@ -62,16 +62,8 @@ def is_adjacent(hit, cluster, n_pix):
     )
 
 
+@log_offline_process('pixelClusters', input_type = 'dataframe')
 def pixelHits2pixelClusters(pixelHits, npix, window_ns):
-    stime = time.time()
-    global_log.info(f"Offline [pixelClusters]: START")
-    if not len(pixelHits):
-        global_log.error(
-            f"Offline [pixelClusters]: Empty pixel hits dataframe, probably no hit produced.")
-        global_log.info(f"Offline [pixelClusters]: {get_stop_string(stime)}")
-        return pd.DataFrame()
-    else:
-        global_log.debug(f"Input: {len(pixelHits)} pixel hits")
 
     # Initialization
     clusters = []
@@ -94,7 +86,5 @@ def pixelHits2pixelClusters(pixelHits, npix, window_ns):
     new_cluster(clusters, clust, hit, npix)
 
     df = pd.concat(clusters, ignore_index=True)
-    global_log.debug(f"{len(clusters)} clusters")
-    global_log_debug_df(df)
-    global_log.info(f"Offline [pixelClusters]: {get_stop_string(stime)}")
+
     return df

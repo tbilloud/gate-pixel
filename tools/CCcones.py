@@ -1,15 +1,9 @@
 # Functions to process cones
-import os
-import time
+
 import numpy as np
 import pandas
-import pandas as pd
-import uproot
-
-from tools.CCevents import global_log
 from tools.pixelHits import EVENTID
-from tools.utils import get_stop_string, global_log_debug_df, \
-    localFractional2globalCoordinates, localFractional2globalVector, metric_num
+from tools.utils import localFractional2globalCoordinates, localFractional2globalVector,  log_offline_process
 
 # Cone format definition
 APEX_X, APEX_Y, APEX_Z = 'Apex_X', 'Apex_Y', 'Apex_Z'
@@ -19,17 +13,6 @@ ERROR = 'error'
 
 
 def CCevents2CCcones(CCevents, log=True):
-    stime = time.time()
-
-    if log:
-        global_log.info("Offline [cones]: START")
-        if not len(CCevents):
-            global_log.error("Empty input.")
-            global_log.info(f"Offline [cones]: {get_stop_string(stime)}")
-            return pandas.DataFrame()
-        global_log.debug(f"Input: {len(CCevents)} entries")
-    elif not len(CCevents):
-        return pandas.DataFrame()
 
     pos_compton = CCevents[
         ['PositionX_1', 'PositionY_1', 'PositionZ_1']].to_numpy()
@@ -74,10 +57,6 @@ def CCevents2CCcones(CCevents, log=True):
         COS: cosT,
     })
 
-    if log:
-        global_log.info(f"Offline [cones]: {len(cones)} cones")
-        global_log_debug_df(cones)
-        global_log.info(f"Offline [cones]: {get_stop_string(stime)}")
     return cones
 
 
@@ -106,13 +85,7 @@ def local2global_cones(cones, translation, rotation, npix, pitch, thickness):
         DataFrame: Updated DataFrame with apex columns replaced by global coordinates.
     """
 
-    global_log.info(f"Offline [transform coord]: START")
-    stime = time.time()
-
     df_copy = cones.copy()
-    if df_copy.empty:
-        global_log.error('Input DataFrame is empty. No coordinates to convert.')
-        return pd.DataFrame()
 
     # Transform apex coordinates
     apex_cols = [APEX_X, APEX_Y, APEX_Z]
@@ -135,6 +108,4 @@ def local2global_cones(cones, translation, rotation, npix, pitch, thickness):
     vectors = df_copy.apply(transform_direction, axis=1, result_type='expand')
     df_copy[direction_cols] = vectors
 
-    global_log_debug_df(df_copy)
-    global_log.info(f"Offline [transform coord]: {get_stop_string(stime)}")
     return df_copy

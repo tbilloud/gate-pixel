@@ -11,7 +11,6 @@ FNAME_GEO_CONF = 'allpix_geometry.conf'
 FNAME_DATA_TXT = 'allpixHits'
 FNAME_MODULES = 'allpix_modules.root'
 
-
 def run_allpix(sim,
                binary_path='allpix/allpix-squared/install-noG4/bin/',
                output_dir='allpix/',
@@ -62,10 +61,6 @@ def run_allpix(sim,
     binary_path = Path(binary_path)
     output_dir = Path(output_dir)
 
-    # Measure time spent with Allpix (run, and if used, weighting potential calculation)
-    stime = time.time()
-    global_log.info(f"Offline [Allpix2]: START")
-
     # Prevent two competing visualizations
     if sim.visu is True:
         sys.exit("Allpix cannot be run with Gate visualization enabled")
@@ -74,10 +69,6 @@ def run_allpix(sim,
     hits_actor = sim.actor_manager.get_actor("Hits")
     gHits = Path(sim.output_dir) / hits_actor.output_filename
     gHits = os.path.join(os.getcwd(), gHits)
-    if not os.path.isfile(gHits):
-        global_log.error(f"File {gHits} does not exist, probably no hit produced.")
-        global_log.info(f"Offline [Allpix2]: {get_stop_string(stime)}")
-        return
     gHits_df = uproot.open(gHits)['Hits'].arrays(library='pd', entry_stop=entry_stop)
     global_log.debug(f"Input {gHits}, {len(gHits_df)} gHits")
     sensor = sim.volume_manager.get_volume("sensor")
@@ -242,10 +233,9 @@ file_name = "{FNAME_DATA_TXT}"
         txt = "Using source.n leads to data processing issues:\nAll events start with the same global time -> pixel hits will have the same ToA.\nThis pile-up will prevent proper pixel hit clustering and lead to wrong cones."
         global_log.warning(txt)
 
-    global_log.info(f"Offline [Allpix2]: {get_stop_string(stime)}")
-
 
 # TODO: I've seen negative ToT values in data.txt
+@log_offline_process('pixelHits', input_type = 'sim')
 def gHits2allpix2pixelHits(sim, npix,
                            binary_path='allpix/allpix-squared/install-noG4/bin/',
                            config='default',
