@@ -93,7 +93,7 @@ def set_fluorescence(sim):
     sim.physics_manager.global_production_cuts.gamma = 1 * um
     sim.physics_manager.global_production_cuts.electron = 100 * um
     sim.physics_manager.em_parameters.update(
-        {'True': True, 'pixe': True, 'deexcitation_ignore_cut': False,
+        {'fluo': True, 'pixe': True, 'deexcitation_ignore_cut': False,
          'auger': True, 'auger_cascade': True})
     # TODO: deexcitation_ignore_cut impacts number of hits, and depends on cuts
     
