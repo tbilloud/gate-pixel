@@ -182,7 +182,6 @@ def plot_reco(
 
     viewer = napari.Viewer()
     vol_i = np.array(vol, copy=True)
-    global_log.error('test')
     if detector:
         if vpitch:
             _mark_detector_in_volume(vol_i, detector["size"], detector["position"], pitch)
