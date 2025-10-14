@@ -325,7 +325,7 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=
     else:
         vol = reconstruct(CCevents, vpitch, vsize,
                           energies_MeV=energies_MeV, tol_MeV=tol_MeV,
-                          cone_width=cone_width, log=False, method=method, **kwargs)
+                          cone_width=cone_width, method=method, **kwargs)
         if np.all(vol == 0):
             global_log.error("Reconstruction returned an empty volume.")
             global_log.info('-' * 80)
