@@ -28,7 +28,8 @@ TOT = 'ToT'
 pixelHits_columns = [PIXEL_ID, TOA, ENERGY_keV]  # ADD / REMOVE columns as needed
 EVENTID = 'EventID'  # optional, used for simulated hits only
 
-@log_offline_process('pixelHits', input_type = 'file')
+
+@log_offline_process('pixelHits', input_type='file')
 def singles2pixelHits(file_path, speed, thick, actor='Singles', nrows=None):
     """
     Converts a ROOT file containing Gate singles into a DataFrame of pixelHits.
@@ -58,78 +59,6 @@ def singles2pixelHits(file_path, speed, thick, actor='Singles', nrows=None):
     singles = singles[[EVENTID] + pixelHits_columns]
 
     return singles[[EVENTID] + pixelHits_columns]
-
-
-def pixelHits_fig_ax(pixelHits_df, n_pixels, fig, ax,
-                     log_scale=[False, False, False]):
-    df, np = pixelHits_df, n_pixels
-    x, y = zip(*df[PIXEL_ID].apply(get_pixID_2D, args=(np,)))
-
-    nc, ne, nt = [mcolors.LogNorm() if log else None for log in log_scale]
-
-    hc = ax[0].hist2d(x, y, bins=[np] * 2, range=[[0, n_pixels]] * 2, norm=nc)
-    cb = fig.colorbar(hc[3], ax=ax[0], label='Count')
-    cb.locator = MaxNLocator(integer=True)
-    cb.update_ticks()
-    ax[0].set_title('Counts')
-
-    he = ax[1].hist2d(x, y, bins=[np] * 2, weights=df[ENERGY_keV],
-                      range=[[0, np]] * 2, norm=ne,
-                      vmin=0.5 * df[ENERGY_keV].min() if not ne else None)
-    fig.colorbar(he[3], ax=ax[1], label='Energy (keV)')
-    ax[1].set_title('Energy')
-
-    ht = ax[2].hist2d(x, y, bins=[np] * 2, weights=df[TOA],
-                      range=[[0, np]] * 2, norm=nt,
-                      vmin=0.9 * df[TOA].min() if not nt else None)
-    fig.colorbar(ht[3], ax=ax[2], label='ToA (ns)')
-    ax[2].set_title('Time')
-
-    for a in ax:
-        a.set_aspect('equal')
-        a.set_xlabel('Pixel x')
-        a.set_ylabel('Pixel y')
-        a.xaxis.set_major_locator(MaxNLocator(integer=True))
-        a.yaxis.set_major_locator(MaxNLocator(integer=True))
-
-    return fig, ax
-
-
-def plot_pixelHits_perEventID(pixelHits_df, n_pixels,
-                              log_scale=[False, False, False]):
-    unique_event_ids = pixelHits_df[EVENTID].unique()
-    for event_id in unique_event_ids:
-        fig, ax = plt.subplots(1, 3, figsize=(16, 4))
-        df = pixelHits_df[pixelHits_df[EVENTID] == event_id]
-        pixelHits_fig_ax(df, n_pixels, fig, ax, log_scale)
-        plt.suptitle(f'Event ID: {event_id}')
-        plt.tight_layout()
-        plt.show()
-
-
-def plot_pixelHits_comparison(pixelHits_df1, pixelHits_df2, n_pixels,
-                              log_scale=[False, False, False]):
-    fig, ax = plt.subplots(2, 3, figsize=(12, 6))
-    pixelHits_fig_ax(pixelHits_df1, n_pixels, fig, ax[0], log_scale)
-    pixelHits_fig_ax(pixelHits_df2, n_pixels, fig, ax[1], log_scale)
-    plt.tight_layout()
-    plt.show()
-
-
-def plot_pixelHits_comparison_perEventID(pixelHits_df1, pixelHits_df2,
-                                         n_pixels,
-                                         log_scale=[False, False, False]):
-    unique_event_ids = pixelHits_df1[EVENTID].unique()
-    assert (unique_event_ids == pixelHits_df2[EVENTID].unique()).all()
-    for event_id in unique_event_ids:
-        df1 = pixelHits_df1[pixelHits_df1[EVENTID] == event_id]
-        df2 = pixelHits_df2[pixelHits_df2[EVENTID] == event_id]
-        fig, ax = plt.subplots(2, 3, figsize=(11, 6))
-        pixelHits_fig_ax(df1, n_pixels, fig, ax[0], log_scale)
-        pixelHits_fig_ax(df2, n_pixels, fig, ax[1], log_scale)
-        plt.suptitle(f'Event ID: {event_id}')
-        plt.tight_layout()
-        plt.show()
 
 
 def pixelHits2burdaman(pixelHits_df, out_path):
@@ -194,7 +123,6 @@ def pixelHits2burdaman(pixelHits_df, out_path):
 
 # TODO adapt to different simulation chains
 def allpixTxt2pixelHit(text_file, n_pixels=256):
-
     rows = []
     with open(text_file.with_suffix('.txt'), "r") as file:
         event_id = None
@@ -234,7 +162,7 @@ def allpixTxt2pixelHit(text_file, n_pixels=256):
 
 
 # TODO: check for ToA overflow
-@log_offline_process('pixelHits', input_type = 'file')
+@log_offline_process('pixelHits', input_type='file')
 def pixet2pixelHit(t3pa_file, calib, chipID=None, nrows=None):
     """
     Convert pixel hits and calibration from ADVACAM/PIXET to a pixelHit DataFrame.
