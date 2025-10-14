@@ -255,7 +255,6 @@ def pixet2pixelHit(t3pa_file, calib, chipID=None, nrows=None):
 def remove_edge_pixels(df, n_pixels=256, edge_thickness=1):
     """
     Remove edge pixels from a DataFrame.
-    Works with either PIX_X_ID/PIX_Y_ID or PIX_ID columns.
     edge_thickness: number of pixels to exclude from each edge (default=1).
     """
 
