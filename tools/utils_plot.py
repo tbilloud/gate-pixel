@@ -7,20 +7,10 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
 
-def plot_energies(
-        *,
-        max_keV,
-        min_keV=0,
-        hits_list=None,
-        clusters_list=None,
-        CCevents_list=None,
-        names=None,
-        colors=None,
-        alphas=None,
-        max_y=None,
-        ylog=False,  # NEW: enable log scale on Y axis
-        output_filename=None,
-):
+def plot_energies(hits_list, clusters_list, CCevents_list, max_keV, min_keV=0,
+                  names=None, colors=None, alphas=None, max_y=None, ylog=False,
+                  output_filename=None,
+                  ):
     """
     Plots histograms of multiple pixel hits and clusters vertically.
     Each dataset is overlaid with a different color and label.
@@ -99,7 +89,7 @@ def plot_energies(
 
 def plot_reco(
         vol,
-        vpitch = None,
+        vpitch=None,
         detector=None,
         axes_order=(0, 1, 2),
         orientation2d=("up", "right"),
@@ -184,7 +174,8 @@ def plot_reco(
     vol_i = np.array(vol, copy=True)
     if detector:
         if vpitch:
-            _mark_detector_in_volume(vol_i, detector["size"], detector["position"], pitch)
+            _mark_detector_in_volume(vol_i, detector["size"], detector["position"],
+                                     pitch)
         else:
             global_log.error("vpitch must be specified to mark detector.")
     viewer.add_image(
@@ -275,4 +266,3 @@ def compare_recos(volumes, names=None, slice_axis=2):
             ax.axis('off')
     plt.tight_layout()
     plt.show()
-
