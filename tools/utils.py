@@ -1,5 +1,4 @@
-# Some utility functions
-# WARNING: For print functions, make sure that dataframe columns are present in simulation settings (c.f. actor attributes)
+# General utility functions
 
 import os
 import sys
@@ -8,99 +7,7 @@ import importlib.metadata
 from pathlib import Path
 import numpy as np
 import pandas
-
-try:
-    from opengate.logger import global_log
-except ImportError:
-    import logging
-
-    global_log = logging.getLogger("dummy")
-    global_log.addHandler(logging.NullHandler())
-
-
-# Prints hits like G4 steps are logged via sim.g4_verbose_level_tracking
-# If pandas.set_option('display.float_format'...) is used in script calling the function, remove it
-def print_hits_inG4format(hits_df):
-    print(
-        hits_df[['EventID', 'PostPosition_X', 'PostPosition_Y', 'PostPosition_Z',
-                 'KineticEnergy', 'TotalEnergyDeposit',
-                 'StepLength', 'TrackLength', 'HitUniqueVolumeID',
-                 'ProcessDefinedStep', 'ParticleName', 'TrackID',
-                 'ParentID', 'ParentParticleName',
-                 'TrackCreatorProcess', 'TrackCreatorModelName'
-                 ]])
-
-
-# Prints only few relevant columns from hits tree
-def print_hits_short(hits_df):
-    print(hits_df[['EventID', 'TrackID', 'ParticleName', 'ParentID',
-                   'ParentParticleName', 'KineticEnergy',
-                   'TotalEnergyDeposit', 'ProcessDefinedStep',
-                   'TrackCreatorProcess', 'GlobalTime',
-                   'HitUniqueVolumeID']].to_string(index=False))
-
-
-def print_hits_long(hits_df):
-    print(hits_df[[
-        'EventID', 'TrackID', 'ParticleName', 'ParentID', 'ParentParticleName',
-        'KineticEnergy',
-        'TotalEnergyDeposit', 'ProcessDefinedStep', 'TrackCreatorProcess',
-        'PrePosition_X', 'PrePosition_Y', 'PrePosition_Z', 'PostPosition_X',
-        'PostPosition_Y', 'PostPosition_Z',
-        'PreDirection_X', 'PreDirection_Y', 'PreDirection_Z',
-        'PostDirection_X', 'PostDirection_Y', 'PostDirection_Z'
-    ]].to_string(index=False))
-
-
-# Prints directional info from hits tree
-# PreDirection and PostDirection seem to be the same very frequently but not always
-def print_hits_direction(hits_df):
-    print(hits_df[[
-        'EventID', 'TrackID', 'ParticleName', 'ProcessDefinedStep',
-        'PrePosition_X', 'PrePosition_Y', 'PrePosition_Z', 'PostPosition_X',
-        'PostPosition_Y', 'PostPosition_Z',
-        'PreDirection_X', 'PreDirection_Y', 'PreDirection_Z',
-        'PostDirection_X', 'PostDirection_Y', 'PostDirection_Z'
-    ]].to_string(index=False))
-
-
-# Prints gamma interactions
-def print_hits_gammas(hits_df):
-    hits_df = hits_df[hits_df['ParticleName'] == 'gamma']
-    print(hits_df[[
-        'EventID', 'TrackID', 'ParentID', 'KineticEnergy',
-        'TotalEnergyDeposit', 'ProcessDefinedStep', 'TrackCreatorProcess',
-        'PostPosition_Z'
-    ]].to_string(index=False))
-
-
-# Prints time info
-def print_hits_time(hits_df):
-    print(hits_df[[
-        'EventID', 'TrackID', 'ParticleName', 'GlobalTime', 'PreGlobalTime',
-        'LocalTime', 'TimeFromBeginOfEvent',
-        'TrackProperTime',
-    ]].to_string(index=False))
-
-
-# Prints processes info
-def print_hits_processes(hits_df):
-    print(hits_df[[
-        'EventID', 'TrackID', 'ParticleName', 'ProcessDefinedStep',
-        'TrackCreatorProcess', 'TrackCreatorModelName'
-    ]].to_string(index=False))
-
-
-def print_hits_inG4format_sortedByGlobalTime(hits_df):
-    hits_df = hits_df.groupby('EventID').apply(
-        lambda x: x.sort_values('GlobalTime'))
-    print_hits_inG4format(hits_df)
-
-
-def print_hits_long_sortedByGlobalTime(hits_df):
-    hits_df = hits_df.groupby('EventID').apply(
-        lambda x: x.sort_values('GlobalTime'))
-    print_hits_long(hits_df)
+from opengate.logger import global_log
 
 
 def get_pixID(x, y, n_pixels=256):
@@ -111,31 +18,6 @@ def get_pixID_2D(pixel_id, n_pixels=256):
     x = pixel_id // n_pixels
     y = pixel_id % n_pixels
     return x, y
-
-
-def sum_time_intervals(time_intervals):
-    return sum([time_interval[1] - time_interval[0] for time_interval in
-                time_intervals])
-
-
-def get_worldSize(sensor, source, margin=0.1):
-    stype = source.position.type
-    if stype not in ["point", "sphere", "box"]:
-        raise ValueError(
-            "Function get_worldSize() is only implemented for point/sphere/box sources")
-    ssize = source.position.size if stype in ['point', 'box'] else [
-                                                                       source.position.radius] * 3
-    return [np.max([abs(st) + sz / 2, abs(sp) + ss / 2]) * (2 + margin) for
-            st, sz, sp, ss in
-            zip(sensor.translation, sensor.size, source.position.translation,
-                ssize)]
-
-
-def coordinateOrigin2arrayCenter(cp_array, vpitch, vsize):
-    cp_array[:, 0] = cp_array[:, 0] + vpitch * vsize[0] / 2
-    cp_array[:, 1] = cp_array[:, 1] + vpitch * vsize[1] / 2
-    cp_array[:, 2] = cp_array[:, 2] + vpitch * vsize[2] / 2
-    return cp_array
 
 
 def global2localFractionalCoordinates(g, sensor, npix):
@@ -152,6 +34,7 @@ def global2localFractionalCoordinates(g, sensor, npix):
     c = bc - b
 
     return c.tolist()
+
 
 def localFractional2globalCoordinates(c, translation, rotation, npix, pitch, thickness):
     """
@@ -197,6 +80,7 @@ def localFractional2globalCoordinates(c, translation, rotation, npix, pitch, thi
 
     return g.tolist()
 
+
 def localFractional2globalVector(v, rotation, pitch, thickness):
     v = np.array(v)
     v_scaled = v * [pitch, pitch, thickness]
@@ -216,58 +100,18 @@ def charge_speed_mm_ns(mobility_cm2_Vs, bias_V, thick_mm):
     return elec_speed * 1e-8  # [mm/ns]
 
 
-def check_gate_version():
-    if importlib.metadata.version("opengate") != "10.0.1":
-        global_log.error("opengate version not supported: pip install opengate==10.0.1")
-        sys.exit()
-
-def create_sensor_object(size,translation,rotation=np.eye(3)):
-    """
-    Create a dummy sensor object with specified size, translation, and rotation.
-    This is useful for testing purposes.
-    """
-    class Sensor:
-        def __init__(self, size, translation, rotation=np.eye(3)):
-            self.size = size
-            self.translation = translation
-            self.rotation = rotation
-
-    return Sensor(size=size, translation=translation, rotation=rotation)
-
 def metric_num(n, decimals=0):
     abs_n = abs(n)
     if abs_n >= 1_000_000_000_000:
-        return f"{n/1_000_000_000_000:.{decimals}f}T"
+        return f"{n / 1_000_000_000_000:.{decimals}f}T"
     elif abs_n >= 1_000_000_000:
-        return f"{n/1_000_000_000:.{decimals}f}B"
+        return f"{n / 1_000_000_000:.{decimals}f}B"
     elif abs_n >= 1_000_000:
-        return f"{n/1_000_000:.{decimals}f}M"
+        return f"{n / 1_000_000:.{decimals}f}M"
     elif abs_n >= 1_000:
-        return f"{n/1_000:.{decimals}f}K"
+        return f"{n / 1_000:.{decimals}f}K"
     else:
         return str(n)
-
-
-def compton_cos_theta(E1_MeV, source_MeV):
-    """
-    Calculate the cosine of the Compton scattering angle.
-
-    Parameters
-    ----------
-    E1_MeV : float or np.ndarray
-        Energy of the scattered photon [MeV]
-    source_MeV : float or np.ndarray
-        Energy of the incident photon [MeV]
-
-    Returns
-    -------
-    cos_theta : float or np.ndarray
-        Cosine of the scattering angle
-    """
-    numerator = 0.511 * E1_MeV
-    denominator = source_MeV * (source_MeV - E1_MeV)
-    cos_theta = 1 - numerator / denominator
-    return cos_theta
 
 
 def log_offline_process(object_name, input_type):
@@ -278,15 +122,19 @@ def log_offline_process(object_name, input_type):
 
             if input_type == 'file':
                 if not os.path.isfile(args[0]):
-                    global_log.error(f"Offline [{object_name}]: Input file '{args[0]}' not found.")
+                    global_log.error(
+                        f"Offline [{object_name}]: Input file '{args[0]}' not found.")
             elif input_type == 'dataframe':
                 if args[0].empty:
-                    global_log.error(f"Offline [{object_name}]: Input dataframe is empty.")
+                    global_log.error(
+                        f"Offline [{object_name}]: Input dataframe is empty.")
             elif input_type == 'sim':
-                f = Path(args[0].output_dir) / args[0].actor_manager.get_actor("Hits").output_filename
+                f = Path(args[0].output_dir) / args[0].actor_manager.get_actor(
+                    "Hits").output_filename
                 f = os.path.join(os.getcwd(), f)
                 if not os.path.isfile(f):
-                    global_log.error(f"Offline [{object_name}]: Input simulation not found.")
+                    global_log.error(
+                        f"Offline [{object_name}]: Input simulation not found.")
             else:
                 raise ValueError("input_type must be 'file', 'dataframe' or 'sim'")
 
@@ -300,5 +148,7 @@ def log_offline_process(object_name, input_type):
             global_log.info(f"Offline [{object_name}]: {stop_string}")
 
             return result
+
         return wrapper
+
     return decorator

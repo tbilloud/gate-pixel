@@ -1,11 +1,7 @@
 # Utility function when using opengate
 
-from pathlib import Path
-import SimpleITK as sitk
-import opengate_core
 import pandas as pd
 import uproot
-from matplotlib import pyplot as plt
 import os
 import sys
 import numpy as np
@@ -13,12 +9,14 @@ import logging
 import json
 import shutil
 import time
+from pathlib import Path
 
+import opengate_core
 from opengate.utility import g4_units
 from opengate.logger import global_log
 from opengate.geometry.volumes import RepeatParametrisedVolume
 
-from tools.utils import sum_time_intervals, metric_num
+from tools.utils import metric_num
 
 um, mm, keV, MeV, deg, Bq, ns, sec = g4_units.um, g4_units.mm, g4_units.keV, g4_units.MeV, g4_units.deg, g4_units.Bq, g4_units.ns, g4_units.s
 
@@ -389,20 +387,6 @@ def set_minipix(sim, thickness, translation = [0 * mm, 0 * mm, 0 * mm]):
     sensor.color = [1.0, 0.0, 0.0, 1.0]
     setup_pixels(sim, npix, sensor, pitch, thickness)
 
-
-def plot_DigitizerProjectionActor(sim):
-    Bq, sec = g4_units.Bq, g4_units.s
-    proj = sim.actor_manager.get_actor("Projection")
-    file_path = sim.output_dir + '/' + proj.output_filename  # Replace with the actual path to your .mhd file
-    image = sitk.ReadImage(file_path)
-    im = sitk.GetArrayFromImage(image)[0, :, :].astype(int)
-    plt.imshow(im, cmap='gray',vmax=2)
-    source = sim.source_manager.get_source("source")
-    events = f'{source.n} events' if source.n else f'{int(source.activity / Bq)}Bq {sum_time_intervals(sim.run_timing_intervals) / sec} sec'
-    plt.title(f'{source.particle} {source.energy.mono} MeV \n {events}')
-    cbar = plt.colorbar(label='number of pixel hits summed over all events')
-    cbar.set_ticks(np.arange(np.min(im), np.max(im) + 1))
-    plt.show()
 
 def get_global_log():
     try:

@@ -128,22 +128,6 @@ Here shutil is used to copy the main script to the output directory, which is us
 later analysis.
 Indeed, the opengate Simulation() object is need for some offline analysis functions.
 
-## utils.get_worldSize()
-
-Create a world volume adapted to detector/source geometry.
-
-```
-  from tools.utils import get_worldSize
-
-  ## ============================
-  ## == SOURCE                 ==
-  ## ============================
-  source = sim.add_source("GenericSource", "source")
-  source.activity, sim.run_timing_intervals = 250_000 * Bq, [[0, 0.5 * sec]]
-  source.particle, source.half_life = 'ion 71 177', 6.65 * day  # Lu177
-  sim.world.size = get_worldSize(sensor, source, margin=10)
-```
-
 ## utils_opengate.theta_phi()
 
 In case of an isotropic source, calculate the theta/phi angles that just fits the sensor
@@ -242,17 +226,31 @@ Compton camera was perfect.
 Pixel hits from Allpix2 allow to reconstruct cones as would be done with a Timepix3
 detector.
 
-Since pixel hit formats are different in smiulation and acquisition softwares (e.g.
+Since pixel hit formats differ in Allpix2 and acquisition software (e.g.
 Advacam's Pixet), a new format is defined here, in tools/pixelHits.py.
 
-## Analysing Gate hits
+## Analysing Geant4 steps / Gate hits
 
-Geant4 steps can be logged in terminal with sim.g4_verbose,
-sim.g4_verbose_level_tracking = True, 1 (EventIDs are not logged, hence better do that
-with small number of events)
+Gate hits are similar, but not identical, to Geant4 steps. 
 
+Geant4 steps can be logged in terminal with 
+`sim.g4_verbose, sim.g4_verbose_level_tracking = True, 1`
+=> EventIDs are not logged, hence better do that with small number of events
+
+Gate hits are saved in ROOT files when the 'DigitizerHitsCollectionActor' actor is used.
+They can be read as pandas dataframe with
+`uproot.open(file_path)['Hits'].arrays(library='pd', entry_stop=nrows)`
+To print them with same parameters as Geant4 steps, select columns:
+```
+'EventID', 'PostPosition_X', 'PostPosition_Y', 'PostPosition_Z', 'KineticEnergy', 
+'TotalEnergyDeposit', 'StepLength', 'TrackLength', 'HitUniqueVolumeID',
+'ProcessDefinedStep', 'ParticleName', 'TrackID', 'ParentID', 'ParentParticleName',
+'TrackCreatorProcess', 'TrackCreatorModelName'
+```
+
+Notes:
 - ProcessDefinedStep (Gate) is pre-step, ProcName (G4) is post-step
-  => thus when new track are generated in sensor, their ProcessDefinedStep is none.
+  => thus when new tracks are generated in sensor, their ProcessDefinedStep is none.
 - KineticEnergy (Gate) is pre-step, KinE (G4) is post-step
 - StepLength (Gate) / StepLeng (G4) can be used to match hits (Gate) / steps (G4)
 
