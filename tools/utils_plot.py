@@ -238,43 +238,41 @@ def compare_pixelClusters(
     return fig, axes
 
 
-def compare_recos(volumes, names=None):
+def compare_recos(volumes, names=None, slice_axis=2):
     """
     Compare multiple volumes side-by-side.
-    For each volume, 5 slices along the 3rd axis are plotted.
-    => This allows, when the source is in the center and the detector along the 3rd axis,
-       to check for misconfiguration in the geometry:
-       the source, the detector, behind the detector and the opposite sides.
+    For each volume, 5 slices along the specified axis are plotted.
     Volumes are normalized to their maximum intensity value.
 
     Args:
         volumes (list of np.ndarray): List of 3D volumes to compare.
-            All volumes must have the same shape.
         names (list of str, optional): List of names for each volume.
-            If None, default names will be generated.
-
-    Raises:
-        ValueError: If the volumes do not all have the same shape.
-
-    Returns:
-        None: Displays the volumes as matplotlib figures.
+        slice_axis (int): Axis along which to take slices (default: 2).
     """
     if len({vol.shape for vol in volumes}) != 1:
         raise ValueError("In volumes must have the same shape.")
 
     volumes = [vol / np.max(vol) if np.max(vol) else vol for vol in volumes]
     names = names if names else [f'Volume {i + 1}' for i in range(len(volumes))]
-    slices = np.linspace(0, volumes[0].shape[2] - 1, 5, dtype=int).tolist()
+    axis_size = volumes[0].shape[slice_axis]
+    slices = np.linspace(0, axis_size - 1, 5, dtype=int).tolist()
     vmin = min(np.nanmin(vol) for vol in volumes)
     vmax = max(np.nanmax(vol) for vol in volumes)
     fig, axes = plt.subplots(len(slices), len(volumes), figsize=(8, 3 * len(slices)))
     if len(volumes) == 1:
         axes = np.array(axes).reshape(-1, 1)
-    for i, z in enumerate(slices):
+    for i, idx in enumerate(slices):
         for j, (vol, name) in enumerate(zip(volumes, names)):
             ax = axes[i, j]
-            ax.imshow(vol[:, :, z], cmap='inferno', vmin=vmin, vmax=vmax)
-            ax.set_title(f'{name} - z={z}')
+            if slice_axis == 0:
+                img = vol[idx, :, :]
+            elif slice_axis == 1:
+                img = vol[:, idx, :]
+            else:
+                img = vol[:, :, idx]
+            ax.imshow(img, cmap='inferno', vmin=vmin, vmax=vmax)
+            ax.set_title(f'{name} - {["x", "y", "z"][slice_axis]}={idx}')
             ax.axis('off')
     plt.tight_layout()
     plt.show()
+
