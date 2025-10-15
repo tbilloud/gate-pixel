@@ -14,7 +14,7 @@ for script in examples:
     # Avoid some scripts:
     # - the current one would loop forever
     # - the comparison with measured data needs additional data
-    if script.name in ['run_all.py','compare_measure.py']:
+    if script.name in ['run_all.py','compare_meas.py']:
         continue
     print('Running',script)
     env = dict(**os.environ)
