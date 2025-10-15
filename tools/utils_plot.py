@@ -90,7 +90,8 @@ def plot_energies(hits_list, clusters_list, CCevents_list, max_keV, min_keV=0,
 def plot_reco(
         vol,
         vpitch=None,
-        detector=None,
+        sensor_size=None,
+        sensor_translation=None,
         axes_order=(0, 1, 2),
         orientation2d=("up", "right"),
         colormap="gray_r",
@@ -98,12 +99,13 @@ def plot_reco(
 ):
     """
     Displays a single 3D volume with napari or matplotlib (if napari is not available).
-    Can mark a detector region if specified.
+    Can mark a sensor region if specified.
 
     Args:
         vol (np.ndarray): Volume to display.
-        vpitch (float, optional): Voxel size (mm), used to show scale and detector.
-        detector (dict, optional): Detector info to mark.
+        vpitch (float, optional): Voxel size (mm), used to show scale and sensor.
+        sensor_size (list, optional): sensor info to mark.
+        sensor_translation (list, optional): sensor info to mark.
         axes_order (tuple): Axes order for napari.
         orientation2d (tuple): 2D orientation for napari.
         colormap (str): Colormap for display.
@@ -141,7 +143,7 @@ def plot_reco(
         plt.show()
         return
 
-    def _mark_detector_in_volume(vol, size, position, vpitch):
+    def _mark_sensor_in_volume(vol, size, position, vpitch):
         center = np.array(vol.shape) // 2
         start = ((np.array(position) - np.array(size) / 2) / vpitch + center).astype(
             int)
@@ -172,12 +174,11 @@ def plot_reco(
 
     viewer = napari.Viewer()
     vol_i = np.array(vol, copy=True)
-    if detector:
+    if sensor_size is not None and sensor_translation is not None:
         if vpitch:
-            _mark_detector_in_volume(vol_i, detector["size"], detector["position"],
-                                     pitch)
+            _mark_sensor_in_volume(vol_i, sensor_size, sensor_translation, pitch)
         else:
-            global_log.error("vpitch must be specified to mark detector.")
+            global_log.error("vpitch must be specified to mark sensor.")
     viewer.add_image(
         vol_i,
         name=name or "volume",
