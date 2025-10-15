@@ -5,7 +5,7 @@ from opengate import g4_units, Simulation
 from pandas import read_csv
 from tools.CCevents import local2global, pixelClusters2CCevents, gHits2CCevents
 from tools.allpix import gHits2allpix2pixelHits
-from tools.utils import charge_speed_mm_ns
+from tools.utils import charge_speed_mm_ns, get_pixID_2D
 from tools.pixelHits import ENERGY_keV, remove_edge_pixels
 from tools.pixelClusters_custom import pixelHits2pixelClusters
 from tools.reconstruction import valid_psource, reconstruct
@@ -35,13 +35,11 @@ if __name__ == "__main__":
     source.particle = "gamma"
     source.position.translation = [0 * mm, 0 * mm, 0 * mm]
     source.activity = 4.5e6 * Bq
-
-    # TUNE
     # sim.physics_manager.physics_list_name = 'G4EmLivermorePhysics'  # Doppler effect
     # set_fluorescence(sim)
     sensor.translation = [-128 * mm, 0 * mm, 0 * mm]  # [0, -11.33, 128.5]
     source.energy.mono = 245 * keV
-    sim.run_timing_intervals = [[0, 1 * s]]
+    sim.run_timing_intervals = [[0, 0.1 * s]]
     hits.output_filename = f"gateHits_{sim.physics_manager.physics_list_name}_{int(sim.run_timing_intervals[0][1] / s)}s.root"
     sim.run()
 
@@ -64,8 +62,8 @@ if __name__ == "__main__":
                                       electronics_noise=0,
                                       charge_per_step=1000,
                                       )
-    # hits_meas = pixet2pixelHit(path_meas, path + 'CALIBRATION')
-    # hits_meas.to_csv(path_meas+'_pixelHits.csv', index=False)
+    # hits_meas = pixet2pixelHit(path_meas, path + 'CALIBRATION') # do this once then read_csv
+    # hits_meas.to_csv(path_meas+'_pixelHits.csv', index=False) # do this once then read_csv
     hit_meas = read_csv(path_meas, nrows=10 * len(hit_allp))
 
     # TOA CUTS
@@ -90,7 +88,8 @@ if __name__ == "__main__":
     clust_meas = clust_meas[clust_meas[ENERGY_keV] < eClstrMax]
     clust_allp = clust_allp[clust_allp[ENERGY_keV] < eClstrMax]
 
-    # compare_pixelClusters(clust_meas, clust_allp, name_a='Measurement', name_b='Allpix', energy_bins=eClstrMax)
+    compare_pixelClusters(clust_meas, clust_allp, name_a='Measurement', name_b='Allpix',
+                          energy_bins=eClstrMax)
 
     # ######################## CCevents  ################################
     ev_meas = pixelClusters2CCevents(clust_meas, thick=t, speed=spd, twindow=100)
@@ -109,8 +108,8 @@ if __name__ == "__main__":
                    'vsize': [128 * 4, 200, 200],
                    'cone_width': 0.01,
                    'energies_MeV': [source.energy.mono], 'tol_MeV': 0.05}
-    vm, va, vr = (reconstruct(e, **reco_params) for e in (ev_meas, ev_allp, ev_refc))
+    vm, va, vr = (reconstruct(ev, **reco_params) for ev in (ev_meas, ev_allp, ev_refc))
 
     # # ############################ DISPLAY  ###############################
-    # plot_reco(va, colormap='inferno')
+    # plot_reco(vm, reco_params['vpitch'], sensor.size, sensor.translation)
     compare_recos([vm, va, vr], ['Measurement', 'Allpix', 'Reference'], 0)
