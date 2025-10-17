@@ -132,7 +132,7 @@ def pixet2pixelHit(t3pa_file, calib, nrows=None):
     calib_names = ['caliba', 'calibb', 'calibc', 'calibt']
     calib_dict = {}
 
-    global_log.info(f"Offline [pixelHits]: Searching {calib} for calib files")
+    global_log.debug(f"Offline [pixelHits]: Searching {calib} for calib files")
 
     for name in calib_names:
         file_path = Path(calib) / f"{name}.txt"
