@@ -1,6 +1,7 @@
 # Functions to process pixelHits dataframes
 
 import os
+from pathlib import Path
 import pandas
 import pandas as pd
 import uproot
@@ -101,22 +102,21 @@ def allpixTxt2pixelHit(text_file, n_pixels=256):
 
 # TODO: check for ToA overflow
 @log_offline_process('pixelHits', input_type='file')
-def pixet2pixelHit(t3pa_file, calib, chipID=None, nrows=None):
+def pixet2pixelHit(t3pa_file, calib, nrows=None):
     """
     Convert pixel hits and calibration from ADVACAM/PIXET to a pixelHit DataFrame.
 
-    calib can be:
-    * A directory containing the files caliba.txt, calibb.txt, calibc.txt, calibt.txt
+    calib must be a directory containing the files caliba.txt, calibb.txt, calibc.txt, calibt.txt
       => In Pixet: Detector Setting -> More Detector Settings -> Chips -> Save
-    * An XML file containing the calibration data for the chipID
 
     The measurement must be done with:
     * Measurement -> Type -> Pixels
     * Detector Setting -> Mode -> ToA + ToT
     => This stores a .t3pa and a .t3pa.info file. Only the .t3pa file is needed here.
-
-    The XML file and chip ID are provided when purchasing a detector.
     """
+    if not Path(calib).exists():
+        raise FileNotFoundError(f"Calibration directory not found")
+
     df = pd.read_csv(t3pa_file, sep='\t', index_col='Index', nrows=nrows)
 
     # ===========================
@@ -132,31 +132,16 @@ def pixet2pixelHit(t3pa_file, calib, chipID=None, nrows=None):
     calib_names = ['caliba', 'calibb', 'calibc', 'calibt']
     calib_dict = {}
 
-    if calib.endswith('xml'):
-        global_log.info(f"Offline [pixelHits]: Using XML file for calibration")
-        global_log.error(
-            "Reading calibration from XML seems wrong with current decoding")
-        tree = ET.parse(calib)
-        root = tree.getroot()
-        chip = root.find(chipID)
-        if not chip:
-            global_log.error(f"Chip {chipID} not found in XML file {calib_dict}")
-            sys.exit(1)
-        for name in calib_names:
-            calib_str = chip.find(name).text
-            if calib_str is not None:
-                decoded = base64.b64decode(calib_str)
-                arr = np.frombuffer(decoded, dtype=np.float32)
-                values = arr[1::2]
-                calib_dict[name] = values
-    elif os.path.isdir(calib):
-        global_log.info(f"Offline [pixelHits]: Searching {calib} for calib files")
-        for name in calib_names:
-            file_path = os.path.join(calib, f"{name}.txt")
-            arr = np.loadtxt(file_path)
-            if arr.shape != (256, 256):
-                raise ValueError(f"{file_path} does not have shape (256, 256)")
-            calib_dict[name] = arr.flatten()
+    global_log.info(f"Offline [pixelHits]: Searching {calib} for calib files")
+
+    for name in calib_names:
+        file_path = Path(calib) / f"{name}.txt"
+        if not file_path.is_file():
+            raise FileNotFoundError(f"`{file_path}` not found")
+        arr = np.loadtxt(file_path)
+        if arr.shape != (256, 256):
+            raise ValueError(f"{file_path} does not have shape (256, 256)")
+        calib_dict[name] = arr.flatten()
 
     def tot_to_energy(tot, a, b, c, t):
         A = a
