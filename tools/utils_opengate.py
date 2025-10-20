@@ -398,19 +398,36 @@ def get_global_log():
     return global_log
 
 
-def run_multi(sim, hit_actor, stat_actor):
+def run_multi(sim, hit_actor_name=None, stat_actor_name=None):
     """
     Run the simulation and log key metrics.
     Useful when the simulation is run in a function, not in the __name__ == '__main__'.
     """
+
     start_time = time.time()
-    global_log.info('Simulation START')
+
+    if not hit_actor_name:
+        hit_actor_name = "Hits"
+    try:
+        hit_actor_name = sim.actor_manager.get_actor(hit_actor_name)
+    except Exception:
+        global_log.error(f'Please specify the correct name for the hit actor.')
+        sys.exit(1)
+
+    if not stat_actor_name:
+        stat_actor_name = "Stats"
+        stat_actor = sim.add_actor('SimulationStatisticsActor', stat_actor_name)
+        stat_actor.output_filename = 'gateStats.txt'
+
+    stat_actor = sim.actor_manager.get_actor(stat_actor_name)
+
     sim.run(start_new_process=True)
-    hp = sim.output_dir / hit_actor.output_filename
-    nhits = metric_num(len(uproot.open(hp)['Hits'].arrays(library='pd')))
-    nev = metric_num(json.load(open(stat_actor.output_filename))['events']['value'])
+    global_log.info(f"{'-' * 80}\nSimulation: START")
+    hits_file = sim.output_dir / hit_actor_name.output_filename
+    stat_file = sim.output_dir / stat_actor.output_filename
+    nhits = metric_num(len(uproot.open(hits_file)['Hits'].arrays(library='pd')))
+    nev = metric_num(json.load(open(stat_file))['events']['value'])
     tm = round(time.time() - start_time)
-    sstr = 'Simulation STOP. '
-    global_log.info(f"{sstr}Time: {tm} seconds. {nev} events, {nhits} hits\n{'-' * 80}")
+    global_log.info(f"Simulation: {nev} events, {nhits} hits\nSimulation: STOP. Time: {tm} seconds.\n{'-' * 80}")
     shutil.copy2(os.path.abspath(sys.argv[0]), sim.output_dir)
 
