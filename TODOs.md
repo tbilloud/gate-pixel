@@ -1,4 +1,4 @@
-# [napari/opengate conflict](#napariopengate-conflict)
+# napari/opengate conflict
 
 Napari and OpenGate use the same QT backends (PyQt5). Using both in the same script
 leads to warnings and crashes.
@@ -61,7 +61,6 @@ See https://github.com/allpix-squared/allpix-squared/pull/54
 
 - avoid the need to copy-paste 'constants.yaml' in the project's root directory
 - Allow dataframe input instead of saving `coresi_temp.dat' and using read_data_file()
-- Bad events lead to NANs in the whole volume, detect them in advance
 - Sensor rotation only works if it was around the z-axis in the Gate simulation
 - Add all CoReSi parameters to reco_bp_coresi() parameters
 - Allow simple back-projection without the need for sensor geometry as input
