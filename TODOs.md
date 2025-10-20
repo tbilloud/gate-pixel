@@ -1,8 +1,7 @@
 # [napari/opengate conflict](#napariopengate-conflict)
 
-Napari and OpenGate use the same QT backends (PyQt5), which causes conflicts.
-Using Qt-based code (e.g. napari) and gate in the same script leads to warnings and
-crashes.
+Napari and OpenGate use the same QT backends (PyQt5). Using both in the same script
+leads to warnings and crashes.
 
 ## Ubuntu
 
@@ -28,7 +27,6 @@ objc[16117]: Class RunL... is implemented in both .../opengate_core/.dylibs/QtCo
 ```
 
 Solution: TODO !
-
 
 # RepeatParametrisedVolume() triggers 'WARNING Could not check overlap ...'
 
@@ -60,6 +58,7 @@ See https://github.com/allpix-squared/allpix-squared/pull/54
 => e.g. 1e12 ns for a 20s simulation with isotope (see main_In111_advapix.py)
 
 # CoReSi:
+
 - avoid the need to copy-paste 'constants.yaml' in the project's root directory
 - Allow dataframe input instead of saving `coresi_temp.dat' and using read_data_file()
 - Bad events lead to NANs in the whole volume, detect them in advance
