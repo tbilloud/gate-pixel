@@ -15,9 +15,8 @@ if __name__ == "__main__":
     ## ============================
     sim = gate_simu('G4_CADMIUM_TELLURIDE')  # 'G4_Si', 'G4_CADMIUM_TELLURIDE'
     sim.world.material = "G4_AIR"
-    sim.physics_manager.physics_list_name = 'G4EmLivermorePhysics' # for Doppler
-    # set_fluorescence(sim)
-    sim.run_timing_intervals = [[0, 1e4 * g4_units.ms]]
+    # sim.physics_manager.physics_list_name = 'G4EmLivermorePhysics' # for Doppler
+    sim.run_timing_intervals = [[0, 1e1 * g4_units.ms]]
     sim.run()
 
     ## ============================
