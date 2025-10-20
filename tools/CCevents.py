@@ -128,14 +128,14 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                     desc_of_2 = find_descendants(grp, 2)
                     grp = grp[~grp['TrackID'].isin(desc_of_2.union({2}))]
                     h2 = grp.iloc[0]
-                    # TODO: check 2 lines below
                     E2 = source_MeV - E1
-                    pos_2nd = [h2[f'PrePosition_{ax}'] for ax in 'XYZ']
+                    pos_2nd = [h2[f'PrePosition_{ax}'] for ax in 'XYZ'] # TODO leads to bug (see below)
 
         if pos_compton:
-            CCevents.append(
-                [eventid] + [2, 1] + pos_compton + [1000 * E1] + [2] + pos_2nd + [
-                    1000 * E2])
+            if not np.array_equal(pos_compton, pos_2nd): # TODO that's a workaround -> solve bug
+                CCevents.append(
+                    [eventid] + [2, 1] + pos_compton + [1000 * E1] + [2] + pos_2nd + [
+                        1000 * E2])
 
     df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
@@ -263,8 +263,9 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
         else:
             continue
 
-        CCevents.append([eid] + [2, 1] + pos_compton.tolist() + [1000 * E1] + [2] +
-                        pos_2nd.tolist() + [1000 * E2])
+        if not np.array_equal(pos_compton, pos_2nd): # TODO that's a workaround -> solve bug
+            CCevents.append([eid] + [2, 1] + pos_compton.tolist() + [1000 * E1] + [2] +
+                            pos_2nd.tolist() + [1000 * E2])
 
     df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
