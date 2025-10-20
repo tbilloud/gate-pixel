@@ -36,7 +36,7 @@ see [5) Optional: Install Allpix2](#5-optional-install-allpix2)) and ROOT is
 configured (with `source thisroot.sh`):
 
 ```
-mkdir allpix && cd allpix && git clone --depth 1 https://github.com/allpix-squared/allpix-squared.git && cd allpix-squared && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install-noG4 -DBUILD_GeometryBuilderGeant4=OFF -DBUILD_DepositionCosmics=OFF -DBUILD_DepositionGeant4=OFF -DBUILD_DepositionGenerator=OFF -DBUILD_GDMLOutputWriter=OFF -DBUILD_VisualizationGeant4=OFF .. && make -j4 && make install && cd .. && rm -rf .git* && cd ../..
+mkdir allpix && cd allpix && git clone https://github.com/allpix-squared/allpix-squared.git && cd allpix-squared && git reset --hard f542ff9 && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install-noG4 -DBUILD_GeometryBuilderGeant4=OFF -DBUILD_DepositionCosmics=OFF -DBUILD_DepositionGeant4=OFF -DBUILD_DepositionGenerator=OFF -DBUILD_GDMLOutputWriter=OFF -DBUILD_VisualizationGeant4=OFF .. && make -j4 && make install && cd .. && rm -rf .git* && cd ../..
 ```
 
 For CoReSi:
@@ -137,8 +137,9 @@ https://allpix-squared.docs.cern.ch/docs/02_installation/
 ```
 mkdir allpix
 cd allpix
-git clone --depth 1 git@github.com:allpix-squared/allpix-squared.git
+git clone git@github.com:allpix-squared/allpix-squared.git
 cd allpix-squared
+git reset --hard f542ff9
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=../install-noG4 -DBUILD_GeometryBuilderGeant4=OFF -DBUILD_DepositionCosmics=OFF -DBUILD_DepositionGeant4=OFF -DBUILD_DepositionGenerator=OFF -DBUILD_GDMLOutputWriter=OFF -DBUILD_VisualizationGeant4=OFF ..
