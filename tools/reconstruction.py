@@ -348,13 +348,13 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=
             x = np.arange(len(profile_h))
 
             p0_v = [profile_v.max(), np.argmax(profile_v), 10, profile_v.min()]
-            params_v, _ = curve_fit(gauss, y, profile_v, p0=p0_v)
-            fwhm_v = 2.355 * abs(params_v[2])
-
             p0_h = [profile_h.max(), np.argmax(profile_h), 10, profile_h.min()]
+
             try:
                 params_h, _ = curve_fit(gauss, x, profile_h, p0=p0_h)
+                params_v, _ = curve_fit(gauss, y, profile_v, p0=p0_v)
                 fwhm_h = 2.355 * abs(params_h[2])
+                fwhm_v = 2.355 * abs(params_v[2])
             except RuntimeError:
                 global_log.warning("Gaussian fit failed.")
                 params_h = [np.nan, np.nan, np.nan, np.nan]
