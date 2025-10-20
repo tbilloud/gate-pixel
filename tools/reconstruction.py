@@ -175,6 +175,10 @@ def reco_bp_torch(cones, vpitch, vsize, cone_width=0.01):
 def reco_bp_coresi(CCevents, vpitch, vsize, cone_width, energies_MeV, tol_MeV,
                    sensor_size, sensor_position, sensor_rotation,
                    cone_thickness='parallel'):
+    """
+    TODO docstring
+    TODO filter bad events the same way as other methods
+    """
     try:
         from coresi.camera import setup_cameras
         from coresi.data import read_data_file
