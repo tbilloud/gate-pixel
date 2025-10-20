@@ -307,7 +307,7 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=
         for idx, cone in CCevents.iterrows():
             vol = reconstruct(cone.to_frame().T, vpitch, vsize,
                               energies_MeV=energies_MeV, tol_MeV=tol_MeV,
-                              cone_width=cone_width, log=False, method=method, **kwargs)
+                              cone_width=cone_width, method=method, **kwargs)
             if np.all(vol == 0):
                 global_log.error("Reconstruction returned an empty volume.")
                 continue
