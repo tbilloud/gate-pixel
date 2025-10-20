@@ -31,6 +31,7 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                              entry_stop=None):
     """
     Read Gate hits (from DigitizerHitsCollectionActor) and filter CCevents.
+    TODO: use track IDs instead of the source energy and tolerance since to avoid losing Doppler-broadened events.
 
     Args:
         file_path (str): Path to the ROOT file containing hit data.
@@ -128,7 +129,6 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                     grp = grp[~grp['TrackID'].isin(desc_of_2.union({2}))]
                     h2 = grp.iloc[0]
                     # TODO: check 2 lines below
-                    # E2 = h2['TotalEnergyDeposit']
                     E2 = source_MeV - E1
                     pos_2nd = [h2[f'PrePosition_{ax}'] for ax in 'XYZ']
 
