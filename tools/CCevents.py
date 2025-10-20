@@ -387,7 +387,11 @@ def local2global(CCevents, translation, rotation, npix, pitch, thickness):
     return df_copy
 
 
-def select_CCevents_energies(CCevents, energies_MeV, tol_MeV):
+def filter_bad_CCevents(CCevents, energies_MeV, tol_MeV):
+    """
+    Filters events based on the sum of energies of the two interactions.
+    Similar to filter_bad_events in coresi.data
+    """
     energies_keV = np.array(energies_MeV) * 1000
     tol_keV = tol_MeV * 1000
     energy_sum = CCevents['Energy (keV)_1'] + CCevents['Energy (keV)_2']

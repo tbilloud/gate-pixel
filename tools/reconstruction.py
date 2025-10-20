@@ -9,7 +9,7 @@ import matplotlib.colors
 from matplotlib.gridspec import GridSpec
 from scipy.optimize import curve_fit
 
-from tools.CCevents import select_CCevents_energies
+from tools.CCevents import filter_bad_CCevents
 from tools.pixelHits import EVENTID
 from tools.CCcones import APEX_X, APEX_Y, APEX_Z, DIRECTION_X, DIRECTION_Y, \
     DIRECTION_Z, COS, CCevents2CCcones
@@ -52,7 +52,7 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
                              energies_MeV=energies_MeV, tol_MeV=tol_MeV, **kwargs)
     else:
         if energies_MeV:
-            CCevents = select_CCevents_energies(CCevents, energies_MeV, tol_MeV)
+            CCevents = filter_bad_CCevents(CCevents, energies_MeV, tol_MeV)
         cones = CCevents2CCcones(CCevents, log=False)
         if method == "cupy":
             vol = reco_bp_cupy(cones, vpitch, vsize, cone_width)
