@@ -51,8 +51,11 @@ def reconstruct(CCevents, vpitch, vsize, energies_MeV=False, tol_MeV=0.01,
         vol = reco_bp_coresi(CCevents, vpitch, vsize, cone_width * 100,
                              energies_MeV=energies_MeV, tol_MeV=tol_MeV, **kwargs)
     else:
-        if energies_MeV:
-            CCevents = filter_bad_CCevents(CCevents, energies_MeV, tol_MeV)
+
+        # TODO Make bad event filtering consistent with CoReSi.
+        # => see filter_bad_events() in coresi/data.py. Below is not exactly the same.
+        if energies_MeV: CCevents = filter_bad_CCevents(CCevents, energies_MeV, tol_MeV)
+
         cones = CCevents2CCcones(CCevents, log=False)
         if method == "cupy":
             vol = reco_bp_cupy(cones, vpitch, vsize, cone_width)
