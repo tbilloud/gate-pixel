@@ -1,8 +1,36 @@
+# [napari/opengate conflict](#napariopengate-conflict)
+
+Napari and OpenGate use the same QT backends (PyQt5), which causes conflicts.
+Using Qt-based code (e.g. napari) and gate in the same script leads to warnings and
+crashes.
+
+## Ubuntu
+
+```
+WARNING: QObject::moveToThread: Current thread (0x57ad941535d0) is not the object's thread (0x57ad94c1ef50).
+Cannot move to target thread (0x57ad941535d0)
+```
+
+Solution:
+
+```
+mv venv/lib/python3.11/site-packages/opengate_core/plugins venv/lib/python3.11/site-packages/opengate_core/plugins.bak
+```
+
+-> replace venv and 3.11 if needed.
+
+## Macos
+
+```
+objc[16117]: Class QT_... is implemented in both .../opengate_core/.dylibs/QtCore and .../QtCore (0x16c7d1278) ... One of the duplicates must be removed or renamed.
+objc[16117]: Class KeyV... is implemented in both .../opengate_core/.dylibs/QtCore and .../QtCore (0x16c7d12a0) ... One of the duplicates must be removed or renamed.
+objc[16117]: Class RunL... is implemented in both .../opengate_core/.dylibs/QtCore and .../QtCore (0x16c7d12f0) ... One of the duplicates must be removed or renamed.
+```
+
+Solution: TODO !
+
+
 # RepeatParametrisedVolume() triggers 'WARNING Could not check overlap ...'
-
-# Check tools.utils_opengate.set_fluorescence()
-
-=> deexcitation_ignore_cut impacts number of hits, and depends on cuts
 
 # Use 'hits.keep_zero_edep = True' to simplify and speed-up gHits2cones?
 
