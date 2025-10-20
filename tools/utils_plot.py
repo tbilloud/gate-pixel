@@ -6,6 +6,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
+if sys.platform == "darwin":
+    matplotlib.use("macosx")
+else:
+    try:
+        matplotlib.use("TkAgg")
+    except ImportError:
+        matplotlib.use("Agg")
 
 def plot_energies(hits_list, clusters_list, CCevents_list, max_keV, min_keV=0,
                   names=None, colors=None, alphas=None, max_y=None, ylog=False,
@@ -116,14 +123,6 @@ def plot_reco(
         import napari
     except ImportError:
         global_log.warning("Napari not installed, using matplotlib.")
-
-        if sys.platform == "darwin":
-            matplotlib.use("macosx")
-        else:
-            try:
-                matplotlib.use("TkAgg")
-            except ImportError:
-                matplotlib.use("Agg")
 
         # 2D with slider
         fig, ax = plt.subplots()
