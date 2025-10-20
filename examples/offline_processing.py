@@ -1,6 +1,9 @@
 # Shows how to process Gate simulation data offline
-# Based on output from the main.py -> it needs to be run first
+# Based on output from the example 'main.py' -> it needs to be run first
 # Plots are the same as in main.py if the Allpix/clustering parameters are the same
+
+# IMPORTANT: For offline processing the 'sim' object from the Gate simulation is needed:
+# -> e.g. use shutil.copy2(os.path.abspath(sys.argv[0]), sim.output_dir)
 
 from tools.CCevents import pixelClusters2CCevents, local2global
 from tools.pixelHits import singles2pixelHits

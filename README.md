@@ -227,14 +227,13 @@ python3 examples/compare_recos.py
 A script is composed of a Gate simulation and/or 'offline' processing.
 Offline processing include the Allpix² simulation, pixel hit/cluster/event/cone
 processing, and image reconstruction.
-Functions are documented in the [documentation](doc/readme.md) and in their code
-definition (`tools` sub-directory).
+Offline processing with Allpix² requires the `sim` object from Gate
+-> e.g. use `shutil.copy2(os.path.abspath(sys.argv[0]), sim.output_dir)`
 
 By default, output data goes to different folders.
-Gate data to the folder indicated in sim.output_dir (usually just `output`).
-Allpix data goes to the 'allpix' sub-folder (configuration files, and, optionally,
-weighting potential files).
-CoReSi data goes to the 'coresi' sub-folder.
+- Gate -> `sim.output_dir` (usually just `output`).
+- Allpix -> `allpix` sub-folder (configuration files, etc).
+- CoReSi -> `coresi` sub-folder.
 
 After the Gate simulation, one can:
 
@@ -274,6 +273,8 @@ of a reconstruction slice.
 Or multiple images side-by-side with plot_recos().
 On macOS, these functions cannot yet be used in the same script as Gate (
 see [napari/opengate conflict](#napariopengate-conflict)).
+
+See the [documentation](doc/readme.md) and function definitions in the code for more details.
 
 ## [napari/opengate conflict](#napariopengate-conflict)
 
