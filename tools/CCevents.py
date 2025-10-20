@@ -83,7 +83,7 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
     n_events_primary = 0
     n_events_full_edep = 0
     for eventid, grp in grouped:
-        compton_pos, photoelec_pos, E1, E2 = False, False, False, False
+        pos_compton, pos_2nd, E1, E2 = False, False, False, False
         if source_is_ion:
             sensor_got_primary = daughter_name in grp['ParentParticleName'].to_numpy()
         else:
@@ -113,14 +113,15 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                 if h1['TrackID'] == 1 and grp['TrackID'].value_counts()[1] > 1:
                     # if value_counts()[1] == 1, TrackID 1 stopped at 1st step via photoelec (without prior Compton)
                     # TODO: what about rayleigh scattering and pair production?
-                    compton_pos = [h1[f'PostPosition_{axis}'] for axis in 'XYZ']
+                    pos_compton = [h1[f'PostPosition_{axis}'] for axis in 'XYZ']
                     E1 = h1['TotalEnergyDeposit']
-                    photoelec_pos = [grp.iloc[1][f'PostPosition_{ax}'] for ax in 'XYZ']
+                    h2 = grp.iloc[1]
+                    pos_2nd = [h2[f'PostPosition_{ax}'] for ax in 'XYZ']
                     E2 = source_MeV - E1
                 # Gamma interacts via Compton, step has dE = 0 and is not stored, but recoil e- tracked with TrackID=2
                 # However I can't use direction of recoil e-... Need to go further
                 elif h1['TrackID'] == 2 and h1['TrackCreatorProcess'] == 'compt':
-                    compton_pos = [h1[f'PrePosition_{ax}'] for ax in 'XYZ']
+                    pos_compton = [h1[f'PrePosition_{ax}'] for ax in 'XYZ']
                     E1 = h1['KineticEnergy']
                     # Remove TrackID 2 and its descendants from group
                     desc_of_2 = find_descendants(grp, 2)
@@ -129,11 +130,11 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                     # TODO: check 2 lines below
                     # E2 = h2['TotalEnergyDeposit']
                     E2 = source_MeV - E1
-                    photoelec_pos = [h2[f'PrePosition_{ax}'] for ax in 'XYZ']
+                    pos_2nd = [h2[f'PrePosition_{ax}'] for ax in 'XYZ']
 
-        if compton_pos:
+        if pos_compton:
             CCevents.append(
-                [eventid] + [2, 1] + compton_pos + [1000 * E1] + [2] + photoelec_pos + [
+                [eventid] + [2, 1] + pos_compton + [1000 * E1] + [2] + pos_2nd + [
                     1000 * E2])
 
     df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns)
@@ -230,12 +231,12 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
         sorted_idx = rel_idxs[np.argsort(global_time[rel_idxs], kind='mergesort')]
         h1 = sorted_idx[0]
         if track_ids[h1] == 1 and np.sum(track_ids[sorted_idx] == 1) > 1:
-            compton_pos = post_pos[h1]
+            pos_compton = post_pos[h1]
             E1 = total_edep[h1]
-            photoelec_pos = post_pos[sorted_idx[1]]
+            pos_2nd = post_pos[sorted_idx[1]]
             E2 = source_MeV - E1
         elif track_ids[h1] == 2 and creator_process[h1] == 'compt':
-            compton_pos = pre_pos[h1]
+            pos_compton = pre_pos[h1]
             E1 = kinetic_energy[h1]
             # Find descendants of 2
             desc_of_2 = set()
@@ -258,12 +259,12 @@ def gHits2CCevents(file_path, source_MeV, tolerance_MeV=0.01, entry_stop=None):
                 continue
             h2 = grp2[0]
             E2 = source_MeV - E1
-            photoelec_pos = pre_pos[h2]
+            pos_2nd = pre_pos[h2]
         else:
             continue
 
-        CCevents.append([eid] + [2, 1] + compton_pos.tolist() + [1000 * E1] + [2] +
-                        photoelec_pos.tolist() + [1000 * E2])
+        CCevents.append([eid] + [2, 1] + pos_compton.tolist() + [1000 * E1] + [2] +
+                        pos_2nd.tolist() + [1000 * E2])
 
     df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
