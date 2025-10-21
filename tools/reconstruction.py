@@ -286,12 +286,14 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=
         src_pos (list[float]): The X,Y,Z coordinates of the point source.
         vpitch (float): The voxel size or pitch of the volume.
         vsize (tuple[int, int, int]): The size of the volume in voxels (X, Y, Z).
+        energies_MeV: (list[float]): select energy peaks, False to disable (default)
+        tol_MeV: (float): if energy peaks are selected, tolerance in MeV
         cone_width (float): cone width (the larger the value the thicker the cones).
         plot_seq (bool, optional): If True, displays individual cone slices sequentially. Defaults to False.
         plot_stk (bool, optional): If True, displays the summed stack visualization. Defaults to True.
+        plot_fwhm (bool, optional): If True, displays gaussian fits on the figure sides
+        output_filename (Path, optional): If provided, saves the output plot and data to the specified filename.
         method (str): Reconstruction method: "numpy", "cupy", "torch", "coresi"
-        energies_MeV: (list[float]): select energy peaks, False to disable (default)
-        tol_MeV: (float): if energy peaks are selected, tolerance in MeV
         kwargs: extra parameters for CoReSi:
             sensor_size (list[float])
             sensor_position (list[float]): must be same coord system as CCevents
@@ -428,4 +430,7 @@ def valid_psource(CCevents, src_pos, vpitch, vsize, energies_MeV=False, tol_MeV=
         else:
             plt.show()
 
-    return z_slice_stack, vsize
+        if plot_fwhm:
+            return fwhm_h * vpitch, fwhm_v * vpitch  # return FWHM in distance units
+        else:
+            return z_slice_stack
