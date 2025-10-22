@@ -11,7 +11,7 @@ um, mm, keV, Bq, ms = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_un
 
 def gate_simu(sensor_material="G4_CADMIUM_TELLURIDE"):
     sim, sim.output_dir = Simulation(), Path("output")
-    sim.random_engine, sim.random_seed = "MersenneTwister", 1
+    sim.random_seed = 1
     sim.visu = False
     sim.verbose_level = 'DEBUG'  # DEBUG for data preview, INFO for algo timing only
 
