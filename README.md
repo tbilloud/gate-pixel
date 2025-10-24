@@ -37,11 +37,13 @@ For Allpix², assuming dependencies are installed (see [below](#5-install-allpix
 mkdir allpix && cd allpix && git clone https://github.com/allpix-squared/allpix-squared.git && cd allpix-squared && git reset --hard f542ff9 && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install-noG4 -DBUILD_GeometryBuilderGeant4=OFF -DBUILD_DepositionCosmics=OFF -DBUILD_DepositionGeant4=OFF -DBUILD_DepositionGenerator=OFF -DBUILD_GDMLOutputWriter=OFF -DBUILD_VisualizationGeant4=OFF .. && make -j4 && make install && cd .. && rm -rf .git* && cd ../..
 ```
 
-For CoReSi:
+For CoReSi (optional):
 
 ```
 mkdir coresi && cd coresi && git clone --depth 1 https://github.com/CoReSi-SPECT/coresi && rm -rf coresi/.git* && cd .. && export PYTHONPATH=./coresi/coresi:$PYTHONPATH && cp coresi/coresi/constants.yaml . && pip install torch
 ```
+
+=> [Get started here](#getting-started)
 
 ## [Detailed installation](#install)
 
@@ -175,7 +177,7 @@ a) Install CUDA (https://developer.nvidia.com/cuda-downloads)
 b) Install the Cupy package suited to your CUDA version, e.g.  
 `pip install cupy-cuda115`
 
-### 8) Optional: Install CoReSi (needs python >= 3.11)
+### 8) Optional: Install CoReSi
 
 ```
 mkdir coresi
@@ -197,13 +199,9 @@ This will create a `coresi` sub-directory, which will contain:
 
 ## [Getting started](#getting-started)
 
-From the root directory (if using Pycharm, set the working directory to the root), run:
+From the root directory (if using Pycharm, set the working directory to the root directory), run:
 
 `python3 examples/main.py`
-
-Or, if Allpix² is not needed:
-
-`python3 examples/without_allpix.py`
 
 The 1st time you run a simulation, Gate10 will install Geant4 datasets, which can take a
 while. This is done only once.
