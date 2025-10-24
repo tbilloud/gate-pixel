@@ -28,12 +28,10 @@ Requires:
 Assuming Python 3.11 is installed (replace 3.11 with 3.12 if needed):
 
 ```
-git clone https://github.com/tbilloud/gate-pixel.git && cd gate-pixel && python3.11 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && export GLIBC_TUNABLES=glibc.rtld.optional_static_tls=2000000 && mv venv/lib/python3.11/site-packages/opengate_core/plugins venv/lib/python3.11/site-packages/opengate_core/plugins.bak 
+VERSION=3.11 && git clone https://github.com/tbilloud/gate-pixel.git && cd gate-pixel && python$VERSION -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && export GLIBC_TUNABLES=glibc.rtld.optional_static_tls=2000000 && mv venv/lib/python$VERSION/site-packages/opengate_core/plugins venv/lib/python$VERSION/site-packages/opengate_core/plugins.bak 
 ```
 
-For Allpix², assuming dependencies are installed (
-see [5) Optional: Install Allpix2](#5-optional-install-allpix2)) and ROOT is
-configured (with `source thisroot.sh`):
+For Allpix², assuming dependencies are installed (see [below](#5-optional-install-allpix2) and ROOT is configured (with `source thisroot.sh`):
 
 ```
 mkdir allpix && cd allpix && git clone https://github.com/allpix-squared/allpix-squared.git && cd allpix-squared && git reset --hard f542ff9 && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install-noG4 -DBUILD_GeometryBuilderGeant4=OFF -DBUILD_DepositionCosmics=OFF -DBUILD_DepositionGeant4=OFF -DBUILD_DepositionGenerator=OFF -DBUILD_GDMLOutputWriter=OFF -DBUILD_VisualizationGeant4=OFF .. && make -j4 && make install && cd .. && rm -rf .git* && cd ../..
@@ -100,9 +98,11 @@ For PyCharm:
         - In `Working directory`, put `/path/Compton-Camera-TPX3`
         - In `Paths to ".env" files`, put `/path/Compton-Camera-TPX3/.env`
 
-### 5) Optional: Install Allpix²
+### 5) Optional: Install Allpix2
 
 #### Prerequisites Ubuntu
+
+Adapt lines 3-4 to your system (https://root.cern/install/all_releases/)
 
 ```
 sudo apt-get install libboost-all-dev # installs BOOST
@@ -111,8 +111,6 @@ wget https://root.cern/download/root_v6.32.10.Linux-ubuntu22.04-x86_64-gcc11.4.t
 tar -xzvf root_v6.32.10.Linux-ubuntu22.04-x86_64-gcc11.4.tar.gz
 source root/bin/thisroot.sh # installs ROOT6
 ```
-
-Note: adapt lines 3-4 to your system (https://root.cern/install/all_releases/)
 
 #### Prerequisites MacOS
 
@@ -266,14 +264,16 @@ details.
 
 ## Customise
 
-Functions in this tool box are prototypes, easy to understand but not fast. 
+Functions in this tool box are prototypes, easy to understand but not fast.
 Also, there are different ways to process pixel hits or reconstruct images.
 Any step can be easily customised.
 
 For example, to add a custom clustering function:
 
 1.Add a file named e.g. `pixelClusters_custom.py` in the `tools` sub-directory
-2.Write a function named e.g. `pixelHits2pixelClusters_custom()` whose input/output dataframes have the same columns as the original function (check this using `sim.verbose_level = 'DEBUG' in one of the provided example).
+2.Write a function named e.g. `pixelHits2pixelClusters_custom()` whose input/output
+dataframes have the same columns as the original function (check this using `
+sim.verbose_level = 'DEBUG' in one of the provided example).
 3.Import the function in your main script
 
 => an example is provided: `tools/pixelClusters_custom.py`
