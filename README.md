@@ -31,7 +31,8 @@ Assuming Python 3.11 is installed (replace 3.11 with 3.12 if needed):
 VERSION=3.11 && git clone https://github.com/tbilloud/gate-pixel.git && cd gate-pixel && python$VERSION -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && export GLIBC_TUNABLES=glibc.rtld.optional_static_tls=2000000 && mv venv/lib/python$VERSION/site-packages/opengate_core/plugins venv/lib/python$VERSION/site-packages/opengate_core/plugins.bak 
 ```
 
-For Allpix², assuming dependencies are installed (see [below](#5-install-allpix2)) and ROOT is configured with `source thisroot.sh`:
+For Allpix², assuming dependencies are installed (see [below](#5-install-allpix2)) and
+ROOT is configured with `source thisroot.sh`:
 
 ```
 mkdir allpix && cd allpix && git clone https://github.com/allpix-squared/allpix-squared.git && cd allpix-squared && git reset --hard f542ff9 && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install-noG4 -DBUILD_GeometryBuilderGeant4=OFF -DBUILD_DepositionCosmics=OFF -DBUILD_DepositionGeant4=OFF -DBUILD_DepositionGenerator=OFF -DBUILD_GDMLOutputWriter=OFF -DBUILD_VisualizationGeant4=OFF .. && make -j4 && make install && cd .. && rm -rf .git* && cd ../..
@@ -199,7 +200,8 @@ This will create a `coresi` sub-directory, which will contain:
 
 ## [Getting started](#getting-started)
 
-From the root directory (if using Pycharm, set the working directory to the root directory), run:
+From the root directory (if using Pycharm, set the working directory to the root
+directory), run:
 
 `python3 examples/main.py`
 
@@ -214,10 +216,11 @@ python3 examples/compare_recos.py
 ```
 
 A script is composed of a Gate simulation and/or 'offline' processing.
+Gate documentation: https://opengate-python.readthedocs.io/en/master/.
 Offline processing include the Allpix² simulation, pixel hit/cluster/event/cone
-processing, and image reconstruction.
-Offline processing with Allpix² requires the `sim` object from Gate
--> use `shutil.copy2(os.path.abspath(sys.argv[0]), sim.output_dir)` after `sim.run()`
+processing, and image reconstruction. When planing to run Allpix2 separately from Gate,
+save the Gate script, e.g. with
+`shutil.copy2(os.path.abspath(sys.argv[0]), sim.output_dir)` after `sim.run()`
 
 Data from different tools go to different folders.
 
@@ -229,7 +232,7 @@ After running the Gate simulation, one can:
 
 1) Simulate pixel hits
 
-- from Gate hits with gHits2allpix2pixelHits()
+- from Gate hits with gHits2allpix2pixelHits() (if needed, fetch the `sim` object with copy_sim_from_script())
 - from Gate singles with gSingles2pixelHits()
 
 2) Cluster pixel hits
@@ -259,6 +262,7 @@ After running the Gate simulation, one can:
 - with plot_reco()
 
 See:
+
 - scripts in [examples](examples)
 - more info in [documentation](doc/readme.md)
 - function descriptions in [tools](tools)
