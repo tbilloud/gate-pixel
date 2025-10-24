@@ -227,38 +227,41 @@ Data from different tools go to different folders.
 
 After running the Gate simulation, one can:
 
-1) Simulate pixel hits:
+1) Simulate pixel hits
 
 - from Gate hits with gHits2allpix2pixelHits()
 - from Gate singles with gSingles2pixelHits()
 
-2) Cluster pixel hits with pixelHits2pixelClusters()
+2) Cluster pixel hits
 
-3) Identify Compton camera events (CCevents):
+- with pixelHits2pixelClusters()
+
+3) Identify Compton camera events (CCevents)
 
 - from Gate hits with gHits2CCevents()
 - from clusters with pixelClusters2CCevents()
 
-4) Generate cones from CCevents with CCevents2CCcones()
+4) Generate cones from CCevents
 
-5) Check cone intersections from a point source with validate_psource()
+- with CCevents2CCcones()
 
-The function needs the source position as input. It draws a point at its location on top
-of a reconstruction slice.
+5) Check cone intersections from a point source
 
-6) Reconstruct 3D image with:
+- with validate_psource(CCevents, source_position, ...)
 
-- simple back-projection (cpu or gpu, if available)
-- advanced techniques via CoReSi (WIP)
+6) Reconstruct 3D image
 
-7) Display a 3D image with plot_reco()
+- with reconstruct(method='numpy'|'torch'|'cupy') for simple back-projection
+- with reconstruct(method='coresi') for advanced techniques via CoReSi (WIP)
 
-Or multiple images side-by-side with plot_recos().
-On macOS, these functions cannot yet be used in the same script as Gate (
-see [napari/opengate conflict](#napariopengate-conflict)).
+7) Display a 3D image
 
-See the [documentation](doc/readme.md) and function definitions in the code for more
-details.
+- with plot_reco()
+
+See:
+- scripts in [examples](examples)
+- more info in [documentation](doc/readme.md)
+- function descriptions in [tools](tools)
 
 ## Customise
 
