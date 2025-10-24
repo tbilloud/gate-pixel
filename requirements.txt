@@ -1,4 +1,3 @@
-opengate==10.0.1 # see TODOs.md for 10.0.2
-#awkward-pandas
-#pyvista
-napari[all]; sys_platform == 'linux' # napari/opengate combo only works on linux
+opengate==10.0.1 # see TODOs.md for later versions
+awkward-pandas # used to read opengate's output files
+napari[all]; sys_platform == 'linux' # used for display. napari/opengate combo only works on linux
