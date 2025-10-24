@@ -31,7 +31,7 @@ Assuming Python 3.11 is installed (replace 3.11 with 3.12 if needed):
 VERSION=3.11 && git clone https://github.com/tbilloud/gate-pixel.git && cd gate-pixel && python$VERSION -m venv venv && source venv/bin/activate && pip install -r requirements.txt && export PYTHONPATH=. && export GLIBC_TUNABLES=glibc.rtld.optional_static_tls=2000000 && mv venv/lib/python$VERSION/site-packages/opengate_core/plugins venv/lib/python$VERSION/site-packages/opengate_core/plugins.bak 
 ```
 
-For Allpix², assuming dependencies are installed (see [below](#5-optional-install-allpix2) and ROOT is configured (with `source thisroot.sh`):
+For Allpix², assuming dependencies are installed (see [below](#5-install-allpix2) and ROOT is configured (with `source thisroot.sh`):
 
 ```
 mkdir allpix && cd allpix && git clone https://github.com/allpix-squared/allpix-squared.git && cd allpix-squared && git reset --hard f542ff9 && mkdir build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install-noG4 -DBUILD_GeometryBuilderGeant4=OFF -DBUILD_DepositionCosmics=OFF -DBUILD_DepositionGeant4=OFF -DBUILD_DepositionGenerator=OFF -DBUILD_GDMLOutputWriter=OFF -DBUILD_VisualizationGeant4=OFF .. && make -j4 && make install && cd .. && rm -rf .git* && cd ../..
@@ -98,7 +98,7 @@ For PyCharm:
         - In `Working directory`, put `/path/Compton-Camera-TPX3`
         - In `Paths to ".env" files`, put `/path/Compton-Camera-TPX3/.env`
 
-### 5) Optional: Install Allpix2
+### 5) Install Allpix2
 
 #### Prerequisites Ubuntu
 
