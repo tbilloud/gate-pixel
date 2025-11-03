@@ -6,13 +6,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
-if sys.platform == "darwin":
-    matplotlib.use("macosx")
-else:
-    try:
-        matplotlib.use("TkAgg")
-    except ImportError:
-        matplotlib.use("Agg")
+if sys.platform == "darwin": matplotlib.use("macosx")
+
 
 def plot_energies(hits_list, clusters_list, CCevents_list, max_keV, min_keV=0,
                   names=None, colors=None, alphas=None, max_y=None, ylog=False,
