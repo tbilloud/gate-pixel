@@ -220,7 +220,7 @@ Gate documentation: https://opengate-python.readthedocs.io/en/master/.
 Offline processing include the Allpix² simulation, pixel hit/cluster/event/cone
 processing, and image reconstruction. When planing to run Allpix2 separately from Gate,
 save the Gate script, e.g. with
-`shutil.copy2(os.path.abspath(sys.argv[0]), sim.output_dir)` after `sim.run()`
+`shutil.copy2(os.path.abspath(sys.argv[0]), sim.output_dir)` after `sim.run`
 
 Data from different tools go to different folders.
 
@@ -232,34 +232,43 @@ After running the Gate simulation, one can:
 
 1) Simulate pixel hits
 
-- from Gate hits with gHits2allpix2pixelHits() (if needed, fetch the `sim` object with copy_sim_from_script())
-- from Gate singles with gSingles2pixelHits()
+- from Gate hits with `gHits2allpix2pixelHits`.
+  For offline use, assuming the Gate simulation script was saved, fetch the `sim` object
+  with
+  `copy_sim_from_script`.
+- from Gate singles with `singles2pixelHits`. This way Allpix2 is not needed, but data
+  fidelity is limited:
+    - Charge sharing is not simulated, hence pixel clusters are smaller
+    - Time-of-Arrival (ToA) is calculated from interaction depths, assuming an ohmic
+      sensor. This is not guaranteed to give realistic results. Silicon sensors and some
+      CdTe/GaAs sensors are not ohmic. Moreover, the impact of charge mobility, small
+      pixel effect, time-walk, etc. are not considered.
 
 2) Cluster pixel hits
 
-- with pixelHits2pixelClusters()
+- with `pixelHits2pixelClusters`
 
 3) Identify Compton camera events (CCevents)
 
-- from Gate hits with gHits2CCevents()
-- from clusters with pixelClusters2CCevents()
+- from Gate hits with `gHits2CCevents`
+- from clusters with `pixelClusters2CCevents`
 
 4) Generate cones from CCevents
 
-- with CCevents2CCcones()
+- with `CCevents2CCcones`
 
 5) Check cone intersections from a point source
 
-- with validate_psource(CCevents, source_position, ...)
+- with `validate_psource(CCevents, source_position, ...)`
 
 6) Reconstruct 3D image
 
-- with reconstruct(method='numpy'|'torch'|'cupy') for simple back-projection
-- with reconstruct(method='coresi') for advanced techniques via CoReSi (WIP)
+- with `reconstruct(method='numpy'|'torch'|'cupy')` for simple back-projection
+- with `reconstruct(method='coresi')` for advanced techniques via CoReSi (WIP)
 
 7) Display a 3D image
 
-- with plot_reco()
+- with `plot_reco`
 
 See:
 
@@ -276,7 +285,7 @@ Any step can be easily customised.
 For example, to add a custom clustering function:
 
 1.Add a file named e.g. `pixelClusters_custom.py` in the `tools` sub-directory
-2.Write a function named e.g. `pixelHits2pixelClusters_custom()` whose input/output
+2.Write a function named e.g. `pixelHits2pixelClusters_custom` whose input/output
 dataframes have the same columns as the original function (check this using `
 sim.verbose_level = 'DEBUG' in one of the provided example).
 3.Import the function in your main script

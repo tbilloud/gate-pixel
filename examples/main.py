@@ -4,6 +4,13 @@
 # - identify Compton camera events
 # - reconstruct the source position
 # - compare with Gate's blurred singles
+#
+# There also is a comparison with Gate's 'singles', to justify the use of Allpix2.
+# 'Singles' sum energy deposits per pixel, but do not account for charge sharing.
+# Hence, energy spectra of the raw data (pixel hits) are different.
+# Moreover, 'singles' do not simulate time-of-arrival, which is crucial for single-layer
+# semiconductor Compton cameras. The function singles2pixelHits() gives a TOA based on
+# interactions' depth, but might not be realistic in some cases (see doc).
 
 from opengate.utility import g4_units
 from examples.gate_simu import gate_simu
