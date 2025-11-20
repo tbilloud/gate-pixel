@@ -39,6 +39,9 @@ if __name__ == "__main__":
     # source.particle, source.half_life = 'ion 42 99', 2.75 * g4_units.day # Mo99/Tc99m
     source.energy.mono = 0  # erase energy that was set in gate_simu()
 
+    # Increase run time to get few cones
+    sim.run_timing_intervals[0][1] *= 10
+
     sim.run()
 
     ## ============================
