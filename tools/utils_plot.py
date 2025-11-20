@@ -21,6 +21,7 @@ def plot_energies(hits_list, clusters_list, CCevents_list, max_keV, min_keV=0,
         max_keV (int): Maximum energy (keV) for histogram range and bins.
         min_keV (int): Minimum energy (keV) for histogram range and bins.
         hits_list (list): List of DataFrames for pixel hits.
+        clusters_list (list): List of DataFrames for pixel clusters.
         CCevents_list (list): List of DataFrames for Compton camera events.
         names (list): List of labels for each dataset.
         colors (list): List of colors for each dataset.
