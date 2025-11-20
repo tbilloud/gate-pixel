@@ -36,7 +36,7 @@ if __name__ == "__main__":
     source = sim.source_manager.get_source("source")
     source.particle, source.half_life = "ion 71 177", 6.65 * g4_units.day  # Lu177
     # source.particle, source.half_life = 'ion 49 111', 2.81 * g4_units.day # In111
-    # source.particle, source.half_life = 'ion 42 99', 2.75 * g4_units.day # Mo99/Tc99m
+    # source.particle, source.half_life = 'ion 43 99 140', 6 * g4_units.hour # Tc99m
     source.energy.mono = 0  # erase energy that was set in gate_simu()
 
     # Increase run time to get few cones
