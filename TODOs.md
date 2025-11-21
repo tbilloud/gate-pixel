@@ -1,3 +1,8 @@
+# DigitizerBlurringActor incompatible with ion sources
+
+If sim.physics_manager.enable_decay = True, DigitizerBlurringActor gives duplicated
+'singles'. This is especially problematic for some clustering algorithms.
+
 # napari/opengate conflict
 
 Napari and OpenGate use the same QT backends (PyQt5). Using both in the same script
