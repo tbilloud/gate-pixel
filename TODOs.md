@@ -35,7 +35,7 @@ Solution: TODO !
 
 # RepeatParametrisedVolume() triggers 'WARNING Could not check overlap ...'
 
-# Use 'hits.keep_zero_edep = True' to simplify and speed-up gHits2cones?
+# Use 'hits.keep_zero_edep = True' to simplify and speed-up gHits2CCevents?
 
 # Adapt Allpix2 interface to Opengate 10.0.2
 
