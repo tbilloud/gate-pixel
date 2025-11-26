@@ -7,7 +7,7 @@ import importlib.metadata
 from pathlib import Path
 import numpy as np
 import pandas
-from opengate.logger import global_log
+from tools.logging_custom import global_log
 
 
 def get_pixID(x, y, n_pixels=256):

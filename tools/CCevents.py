@@ -11,13 +11,7 @@ from tools.utils import localFractional2globalCoordinates, log_offline_process
 from tools.pixelHits import TOA, ENERGY_keV, EVENTID
 from tools.pixelClusters import PIX_X_ID, PIX_Y_ID
 
-try:
-    from opengate.logger import global_log
-except ImportError:
-    import logging
-
-    global_log = logging.getLogger("dummy")
-    global_log.addHandler(logging.NullHandler())
+from tools.logging_custom import global_log
 
 # CCevents format definition: same as CoReSi input
 CCevents_columns = ['n']

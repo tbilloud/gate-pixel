@@ -15,13 +15,7 @@ from tools.CCcones import APEX_X, APEX_Y, APEX_Z, DIRECTION_X, DIRECTION_Y, \
     DIRECTION_Z, COS, CCevents2CCcones
 from tools.utils import log_offline_process
 
-try:
-    from opengate.logger import global_log
-except ImportError:
-    import logging
-
-    global_log = logging.getLogger("dummy")
-    global_log.addHandler(logging.NullHandler())
+from tools.logging_custom import global_log
 
 
 @log_offline_process('reconstruct', input_type = 'dataframe')

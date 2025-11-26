@@ -13,10 +13,10 @@ from pathlib import Path
 
 import opengate_core
 from opengate.utility import g4_units
-from opengate.logger import global_log
 from opengate.geometry.volumes import RepeatParametrisedVolume
 
 from tools.utils import metric_num
+from tools.logging_custom import global_log
 
 um, mm, keV, MeV, deg, Bq, ns, sec = g4_units.um, g4_units.mm, g4_units.keV, g4_units.MeV, g4_units.deg, g4_units.Bq, g4_units.ns, g4_units.s
 
@@ -386,16 +386,6 @@ def set_minipix(sim, thickness, translation = [0 * mm, 0 * mm, 0 * mm]):
     sensor.translation = [-10 * mm, 0 * mm, 0 * mm]
     sensor.color = [1.0, 0.0, 0.0, 1.0]
     setup_pixels(sim, npix, sensor, pitch, thickness)
-
-
-def get_global_log():
-    try:
-        from opengate.logger import global_log
-    except ImportError:
-        global_log = logging.getLogger("dummy")
-        global_log.addHandler(logging.NullHandler())
-    global_log.setLevel(logging.DEBUG)
-    return global_log
 
 
 def run_multi(sim, hit_actor_name=None, stat_actor_name=None):

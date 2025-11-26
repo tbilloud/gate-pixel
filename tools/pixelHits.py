@@ -11,13 +11,7 @@ import base64
 import numpy as np
 from tools.utils import get_pixID, get_pixID_2D, log_offline_process
 
-try:
-    from opengate.logger import global_log
-except ImportError:
-    import logging
-
-    global_log = logging.getLogger("dummy")
-    global_log.addHandler(logging.NullHandler())
+from tools.logging_custom import global_log
 
 # Pixel hit format definition
 PIXEL_ID = 'PixelID (int16)'

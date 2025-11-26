@@ -7,14 +7,6 @@ import pandas as pd
 from tools.utils import get_pixID_2D, log_offline_process
 from tools.pixelHits import PIXEL_ID, TOA, ENERGY_keV, EVENTID
 
-try:
-    from opengate.logger import global_log
-except ImportError:
-    import logging
-
-    global_log = logging.getLogger("dummy")
-    global_log.addHandler(logging.NullHandler())
-
 # Pixel cluster format definition
 PIX_X_ID = 'X'  # pixel X index (starts from 0, bottom left)
 PIX_Y_ID = 'Y'  # pixel Y index (starts from 0, bottom left)

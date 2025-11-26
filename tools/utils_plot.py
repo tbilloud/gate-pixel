@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from opengate.logger import global_log
+from tools.logging_custom import global_log
 from tools.pixelHits import ENERGY_keV
 import matplotlib
 import matplotlib.pyplot as plt

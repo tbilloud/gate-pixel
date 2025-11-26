@@ -8,11 +8,9 @@ from typing import Iterable, Iterator, List, Tuple, Dict, Optional
 import heapq
 
 from tools.utils import log_offline_process
-from tools.utils_opengate import get_global_log
+from tools.logging_custom import global_log
 from tools.pixelHits import ENERGY_keV, TOA
 from tools.pixelClusters import PIX_X_ID, PIX_Y_ID, SIZE, DELTA_TOA
-
-global_log = get_global_log()
 
 
 # ----------------------------
