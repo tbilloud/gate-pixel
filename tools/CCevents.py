@@ -26,8 +26,8 @@ for i in range(2):
                          f'PositionZ_{i + 1}', f'Energy (keV)_{i + 1}']
 
 
-@log_offline_process('CCevents', input_type = 'file')
-def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
+@log_offline_process('CCevents', input_type='file')
+def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.001,
                              entry_stop=None):
     """
     Read Gate hits (from DigitizerHitsCollectionActor) and filter CCevents.
@@ -138,6 +138,170 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.01,
                         1000 * E2])
 
     df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns)
+    global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
+    global_log.debug(f"=> {n_events_full_edep} with full energy deposited in sensor")
+    global_log.debug(f"  => {len(CCevents)} with at least one Compton interaction")
+
+    return df
+
+
+@log_offline_process('CCevents', input_type='file')
+def gHits2CCevents2_prototype(file_path, source_MeV, tolerance_MeV=0.001,
+                             entry_stop=None):
+    """
+    WIP: trying to fix bug in gHits2CCevents_prototype
+    """
+
+    hits_df = uproot.open(file_path)['Hits'].arrays(library='pd', entry_stop=entry_stop)
+
+    grouped = hits_df.groupby('EventID')
+    CCevents = []
+
+    source_is_ion = isinstance(source_MeV, str) and source_MeV[0].isalpha()
+    daughter_name = None
+    if source_is_ion:
+        daughter_name, gamma_energy = source_MeV.split('_')
+        global_log.debug(
+            f"Filtering {gamma_energy} keV gammas with ParentParticleName={daughter_name}")
+        source_MeV = float(gamma_energy) / 1000  # Convert keV to MeV
+
+    def find_descendants(df, part_id):
+        descendants = set()
+        child = df[df['ParentID'] == part_id]['TrackID'].values
+        for child in child:
+            descendants.add(child)
+            descendants.update(find_descendants(df, child))
+        return descendants
+
+    n_events_primary = 0
+    n_events_full_edep = 0
+    for eventid, grp in grouped:
+        pos_compton, pos_2nd, E1, E2 = False, False, False, False
+        if source_is_ion:
+            sensor_got_primary = daughter_name in grp['ParentParticleName'].to_numpy()
+        else:
+            sensor_got_primary = 1 in grp['TrackID'].values
+        # Sensor received primary gamma and it interacted
+        if sensor_got_primary:
+            n_events_primary += 1
+            if source_is_ion:
+                part_id = grp[grp['ParentParticleName'] == daughter_name]['TrackID'].values[0]
+                descendants = find_descendants(grp, part_id)
+                totenergy = grp[grp['TrackID'].isin(descendants.union({part_id}))][
+                    'TotalEnergyDeposit'].sum()
+                full_absorb = abs(totenergy - source_MeV) < tolerance_MeV
+                if full_absorb:
+                    grp = grp[grp['TrackID'].isin(descendants.union({part_id}))]
+                    grp.loc[:, 'TrackID'] -= (part_id - 1)
+            else:
+                full_absorb = abs(
+                    grp['TotalEnergyDeposit'].sum() - source_MeV) < tolerance_MeV
+            # All primary energy was deposited
+            if full_absorb:
+                n_events_full_edep += 1
+                # Compton interactions are sometime labeled 'ProcessDefinedStep = Transportation'
+                # => Cannot use this attribute only... we can also sort by GlobalTime
+                # => but GlobalTime also has issues (see below)
+                primary_interacted_via_compton = (grp['TrackID'] == 1) & (grp['ProcessDefinedStep'] == 'compt')
+                if primary_interacted_via_compton.any():
+                    h1 = grp.loc[primary_interacted_via_compton].iloc[0]
+                    print('0', eventid, h1['UnscatteredPrimaryFlag'])
+                    pos_compton = [h1[f'PostPosition_{axis}'] for axis in 'XYZ']
+                    E1 = h1['TotalEnergyDeposit']
+                    h2 = grp.iloc[1]
+                    pos_2nd = [h2[f'PostPosition_{ax}'] for ax in 'XYZ']
+                    E2 = source_MeV - E1
+                else:
+                    grp = grp.sort_values('GlobalTime')  # IMPORTANT !
+                    h1 = grp.iloc[0]
+                    # Gamma interacts via Compton, recoil e- not tracked
+                    if h1['TrackID'] == 1 and grp['TrackID'].value_counts()[1] > 1:
+                        print('a', eventid, h1['UnscatteredPrimaryFlag'])
+                        # if value_counts()[1] == 1, TrackID 1 stopped at 1st step via photoelec (without prior Compton)
+                        # TODO: what about rayleigh scattering and pair production?
+                        pos_compton = [h1[f'PostPosition_{axis}'] for axis in 'XYZ']
+                        E1 = h1['TotalEnergyDeposit']
+                        h2 = grp.iloc[1]
+                        pos_2nd = [h2[f'PostPosition_{ax}'] for ax in 'XYZ']
+                        E2 = source_MeV - E1
+
+                    # Gamma interacts via Compton, recoil e- tracked (TrackID=2) and has smaller GlobalTime (why?)
+                    # However I can't use direction of recoil e-... Need to go further
+                    elif h1['TrackID'] == 2 and h1['TrackCreatorProcess'] == 'compt':
+                        print('b', eventid, h1['UnscatteredPrimaryFlag'])
+                        pos_compton = [h1[f'PrePosition_{ax}'] for ax in 'XYZ']
+                        E1 = h1['KineticEnergy']
+                        # Remove TrackID 2 and its descendants from group
+                        desc_of_2 = find_descendants(grp, 2)
+                        grp = grp[~grp['TrackID'].isin(desc_of_2.union({2}))]
+                        h2 = grp.iloc[0]
+                        E2 = source_MeV - E1
+                        pos_2nd = [h2[f'PrePosition_{ax}'] for ax in 'XYZ']
+
+        if pos_compton:
+            if not np.array_equal(pos_compton, pos_2nd):
+                CCevents.append(
+                    [eventid] + [2, 1] + pos_compton + [1000 * E1] + [2] + pos_2nd + [
+                        1000 * E2] + [h1['UnscatteredPrimaryFlag']])
+            else:
+                print('issue')
+    df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns + [
+        'UnscatteredPrimaryFlag'])
+    global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
+    global_log.debug(f"=> {n_events_full_edep} with full energy deposited in sensor")
+    global_log.debug(f"  => {len(CCevents)} with at least one Compton interaction")
+
+    return df
+
+
+@log_offline_process('CCevents', input_type='file')
+def gHits2CCevents_keep_zero_edep_prototype(file_path, source_MeV, tolerance_MeV=0.001,
+                                            entry_stop=None):
+    """
+    WIP: new version using hits.keep_zero_edep = True
+    """
+    hits_df = uproot.open(file_path)['Hits2'].arrays(library='pd',
+                                                     entry_stop=entry_stop)
+
+    grouped = hits_df.groupby('EventID')
+    CCevents = []
+
+    source_is_ion = isinstance(source_MeV, str) and source_MeV[0].isalpha()
+    daughter_name = None
+    if source_is_ion:
+        daughter_name, gamma_energy = source_MeV.split('_')
+        global_log.debug(
+            f"Filtering {gamma_energy} keV gammas with ParentParticleName={daughter_name}")
+        source_MeV = float(gamma_energy) / 1000  # Convert keV to MeV
+
+    n_events_primary = 0
+    n_events_full_edep = 0
+    for eventid, grp in grouped:
+        pos_compton, pos_2nd, E1, E2 = False, False, False, False
+        if source_is_ion:
+            sensor_got_primary = daughter_name in grp['ParentParticleName'].to_numpy()
+        else:
+            full_absorb = abs(grp['TotalEnergyDeposit'].sum() - source_MeV) < tolerance_MeV
+            sensor_got_primary = (grp['TrackID'] == 1) & (grp['KineticEnergy'] == source_MeV)
+            primary_interacted_via_compton1 = (grp['TrackID'] == 1) & (grp['ProcessDefinedStep'] == 'compt')
+            primary_interacted_via_compton2 = (grp['TrackID'] == 2) & (grp['TrackCreatorProcess'] == 'compt')
+            if full_absorb and sensor_got_primary.any() and primary_interacted_via_compton1.any() and primary_interacted_via_compton2.any():
+                # print(grp[['EventID','TrackID','ParticleName','TotalEnergyDeposit','KineticEnergy','ProcessDefinedStep','TrackCreatorProcess']])
+                print(eventid)
+                primary_hits = grp.loc[sensor_got_primary]
+                primary = primary_hits.iloc[0] if not primary_hits.empty else None
+
+                # print(primary)
+                # pos_compton =
+                # pos_2nd =
+
+                # CCevents.append(
+                #     [eventid] + [2, 1] + pos_compton + [1000 * E1] + [2] + pos_2nd + [
+                #         1000 * E2] + [primary['UnscatteredPrimaryFlag']])
+
+
+    df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns + [
+        'UnscatteredPrimaryFlag'])
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
     global_log.debug(f"=> {n_events_full_edep} with full energy deposited in sensor")
     global_log.debug(f"  => {len(CCevents)} with at least one Compton interaction")
