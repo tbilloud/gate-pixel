@@ -123,13 +123,10 @@ def gHits2CCevents_prototype(file_path, source_MeV, tolerance_MeV=0.001,
                     grp = grp[~grp['TrackID'].isin(desc_of_2.union({2}))]
                     h2 = grp.iloc[0]
                     E2 = source_MeV - E1
-                    pos_2nd = [h2[f'PrePosition_{ax}'] for ax in 'XYZ'] # TODO leads to bug (see below)
+                    pos_2nd = [h2[f"{'Post' if h2['TrackID'] == 1 else 'Pre'}Position_{ax}"] for ax in 'XYZ']
 
         if pos_compton:
-            if not np.array_equal(pos_compton, pos_2nd): # TODO that's a workaround -> solve bug
-                CCevents.append(
-                    [eventid] + [2, 1] + pos_compton + [1000 * E1] + [2] + pos_2nd + [
-                        1000 * E2])
+            CCevents.append([eventid] + [2, 1] + pos_compton + [1000 * E1] + [2] + pos_2nd + [1000 * E2])
 
     df = pandas.DataFrame(CCevents, columns=[EVENTID] + CCevents_columns)
     global_log.debug(f"{n_events_primary} events with primary particle hitting sensor")
