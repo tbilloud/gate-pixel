@@ -61,7 +61,7 @@ git clone https://github.com/tbilloud/gate-pixel
 ### 2) Create a virtual environment
 
 ```
-cd ComptonCamera
+cd gate-pixel
 python3 -m venv venv
 source venv/bin/activate
 ```
