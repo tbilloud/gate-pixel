@@ -673,6 +673,11 @@ def filter_bad_CCevents(CCevents, energies_MeV, tol_MeV):
     return CCevents
 
 def compare_simulated_CCevents(df1, df2):
+    """
+    Read 2 dataframes of CCevents and return the list of EventIDs that are different.
+    If one has EventIDs that the other does not have, those are included too.
+    """
+
     cols = ['EventID'] + CCevents_columns
     MISSING = object()
     def row_key(row):
