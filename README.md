@@ -44,7 +44,7 @@ For CoReSi (optional):
 mkdir coresi && cd coresi && git clone --depth 1 https://github.com/CoReSi-SPECT/coresi && rm -rf coresi/.git* && cd .. && export PYTHONPATH=./coresi/coresi:$PYTHONPATH && cp coresi/coresi/constants.yaml . && pip install torch
 ```
 
-=> [Get started here](#getting-started)
+Then, [set up environment](#4-set-up-environment) and [get started here](#getting-started)
 
 ## [Detailed installation](#install)
 
