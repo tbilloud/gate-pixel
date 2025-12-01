@@ -98,8 +98,8 @@ For PyCharm:
     - Expand the box on top with the name of the script you want to run (near ▶)
     - In `Edit Configurations`, with `path` being your absolute path to the repository,
       set:
-        - In `Working directory`, put `/path/Compton-Camera-TPX3`
-        - In `Paths to ".env" files`, put `/path/Compton-Camera-TPX3/.env`
+        - In `Working directory`, put `/path/gate-pixel`
+        - In `Paths to ".env" files`, put `/path/gate-pixel/.env`
 
 ### 5) Install Allpix2
 
