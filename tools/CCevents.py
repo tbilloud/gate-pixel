@@ -111,11 +111,10 @@ def gHits2CCevents_prototype(file_path, source_MeV, entry_stop=None):
                     # TODO: what about rayleigh scattering and pair production?
                     pos_compton = [h1[f'PostPosition_{axis}'] for axis in 'XYZ']
                     E1 = h1['PreKineticEnergy'] - h1['PostKineticEnergy'] # Can't use TotalEnergyDeposit since it might just be the atomic e- energy in case of doppler event
-                    h2 = grp[grp['TrackID'] == 1].iloc[1] # TODO: what if the 2nd interaction is compton with recoil e-?
+                    h2 = grp[grp['TrackID'] == 1].iloc[1] # TODO: what if h2 is a recoil e- (either from a 1st compton with doppler or from a 2nd compton/photoel)?
                     pos_2nd = [h2[f'PostPosition_{ax}'] for ax in 'XYZ']
                     E2 = source_MeV - E1
                 # Gamma interacts via Compton, step has dE = 0 and is not stored, but recoil e- tracked with TrackID=2
-                # However I can't use direction of recoil e-... Need to go further
                 elif h1['TrackCreatorProcess'] == 'compt':
                     grp = grp.sort_values('PreGlobalTime')
                     h1 = grp.iloc[0]
