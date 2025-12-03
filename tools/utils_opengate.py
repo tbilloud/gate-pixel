@@ -21,9 +21,9 @@ from tools.logging_custom import global_log
 um, mm, keV, MeV, deg, Bq, ns, sec = g4_units.um, g4_units.mm, g4_units.keV, g4_units.MeV, g4_units.deg, g4_units.Bq, g4_units.ns, g4_units.s
 
 
-def setup_pixels(sim, npix, sensor, pitch, thickness):
+def setup_pixels(sim, npix, sensor, pitch, thickness, name='pixel'):
     if not sim.visu:  # because 256 x 256 pixels are too heavy for visualization
-        pixel = sim.add_volume("Box", "pixel")
+        pixel = sim.add_volume("Box", name)
         pixel.mother, pixel.size = sensor.name, [pitch, pitch, thickness]
         pixel.material = sensor.material
         par = RepeatParametrisedVolume(repeated_volume=pixel)
