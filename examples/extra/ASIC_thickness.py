@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 from opengate.actors.digitizers import ProcessDefinedStepInVolumeAttribute
 from opengate.managers import Simulation
 from scipy.spatial.transform import Rotation
-from tools.CCevents import gHits2CCevents_0edep, gHits2CCevents
+from tools.CCevents import gHits2CCevents_0edep
 from tools.utils import metric_num
 from tools.utils_opengate import setup_pixels
 from opengate.utility import g4_units
@@ -12,11 +12,12 @@ import pandas as pd
 
 um, mm, keV, Bq, s = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_units.s
 
-def run(asic_mm=1, energy_kev = 140, rot_deg = 0):
+
+def run(asic_mm=1, energy_kev=140, rot_deg=0):
     sim, sim.output_dir = Simulation(), Path("output")
     sim.volume_manager.add_material_database('GateMaterials.db')
     sim.random_seed = 1
-    sim.visu = True
+    sim.visu = False
 
     npix, pitch, thick = 256, 55 * um, 1 * mm
     sim.world.material = "Vacuum"  # "Vacuum" # "G4_AIR"
@@ -68,9 +69,9 @@ def run(asic_mm=1, energy_kev = 140, rot_deg = 0):
     source.particle, source.energy.mono = "gamma", energy_kev * keV
     source.direction.acceptance_angle.volumes = ["mother"]
     source.direction.acceptance_angle.intersection_flag = True
-    source.direction.acceptance_angle.max_rejection = 1e8 # avoid crash
+    source.direction.acceptance_angle.max_rejection = 1e8  # avoid crash
     source.position.translation = [0 * mm, 0 * mm, -25 * mm]
-    source.n = 1e0
+    source.n = 1e4
 
     sim.run(start_new_process=True)
 
@@ -87,25 +88,29 @@ def run(asic_mm=1, energy_kev = 140, rot_deg = 0):
     events_asic = s_asic[s_asic].index
     CCeventsIDs_rayleigh_asic = CCevents['EventID'].isin(events_asic)
     c_asic = CCeventsIDs_rayleigh_asic.sum()
-    print(f"CCevents - rayleigh in asic: {c_asic} ({100 * c_asic / len(CCevents):.1f}%)")
+    print(f"Rayleigh events in asic: {c_asic} ({100 * c_asic / len(CCevents):.1f}%)")
 
     return len(CCevents), c_asic, sim
 
+
 if __name__ == "__main__":
 
-    angles = [90]  # degrees
-    thicknesses = [1]  # mm (must be sorted or will use min for normalization)
+    angles = [0, 90]  # degrees
+    thicknesses = [0.1, 0.5, 1]  # mm (must be sorted or will use min for normalization)
     energies = [140, 511]  # keV
     rows = []
 
     # SIMULATE, STORE AND PLOT
-    if 1:
+    if 0:
         for rot_deg in angles:
             for energy in energies:
                 for t in thicknesses:
                     print(f"\n--- {rot_deg} deg, asic {t} mm, {energy} keV ---")
-                    n_evt, n_rayl, sim = run(asic_mm=t, energy_kev=energy, rot_deg=rot_deg)
-                    rows.append({"rotation_deg": rot_deg, "asic_mm": t, "energy_kev": int(energy), "n_events": int(n_evt), "n_rayleigh": int(n_rayl)})
+                    n_evt, n_rayl, sim = run(asic_mm=t, energy_kev=energy,
+                                             rot_deg=rot_deg)
+                    rows.append({"rotation_deg": rot_deg, "asic_mm": t,
+                                 "energy_kev": int(energy), "n_events": int(n_evt),
+                                 "n_rayleigh": int(n_rayl)})
 
         df = pd.DataFrame(rows).sort_values(["rotation_deg", "energy_kev", "asic_mm"])
         df = df.reset_index(drop=True)
@@ -113,15 +118,13 @@ if __name__ == "__main__":
         df.to_csv(f"output_{metric_num(n)}.csv", index=False)
     # PLOT FROM STORED
     else:
-        df = pd.read_csv("output_100K.csv")
-        print(df)
+        file_name = 'output_1M'
+        df = pd.read_csv(file_name + ".csv")
 
     # create a 2 x N_angles grid: top row = normalized CCevents, bottom row = Rayleigh fraction
     n_ang = len(angles)
     fig, axes = plt.subplots(nrows=2, ncols=n_ang, figsize=(6 * n_ang, 8), sharex=True)
-
-    # ensure axes is 2D array even when n_angles == 1
-    if n_ang == 1: axes = np.array([[axes[0]], [axes[1]]]).reshape(2, 1)
+    if n_ang == 1: axes = np.array([[axes[0]], [axes[1]]]).reshape(2, 1)  # 2D array
 
     for j, rot_deg in enumerate(angles):
         df_a = df[df.rotation_deg == rot_deg]
@@ -147,11 +150,13 @@ if __name__ == "__main__":
         ax_top.set_title(f"rotation = {rot_deg}°")
         ax_top.set_ylabel("n events (%)")
         ax_top.legend(title="Energy")
+        ax_top.set_ylim((60, 105))  # TODO manual range
 
         ax_bot.set_xlabel("ASIC thickness (mm)")
         ax_bot.set_ylabel("Rayleigh fraction (%)")
         ax_bot.legend(title="Energy")
+        ax_bot.set_ylim((0, 0.6))  # TODO manual range
 
     plt.tight_layout()
-    plt.savefig("curves_normalized_angles.png", dpi=150)
+    plt.savefig(file_name + '.png', dpi=150)
     plt.show()
