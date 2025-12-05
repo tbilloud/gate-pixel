@@ -542,6 +542,134 @@ def gHits2CCevents(file_path, source_MeV, entry_stop=None):
 #
 #     return df
 
+@log_offline_process('CCevents', input_type='file')
+def gHits2CCevents_0edep(file_path, sum_subsequent=False):
+    """
+    Same as gHits2CCevents but when using sim.keep_zero_edep = True
+    => Files are larger but the function is simpler and faster
+
+    TODO as opposed to gHits2CCevents, full absorption is not checked here.
+      => better this way, change gHits2CCevents
+
+    Read Gate hits (from DigitizerHitsCollectionActor) and filter CCevents.
+    Args:
+        file_path (str): Path to the ROOT file containing hit data.
+        source_MeV: float or str
+            Energy used to select events. If, in the simulation, source.particle was:
+            * `gamma` -> use a float
+            * `ion xx xxx` -> use a string:
+                'DaughterIsotope[excitationEnergy]_gammaEnergy' with energies in keV
+                 Isotopes can decay to different daughter states, which can emit different gammas.
+                 Only one daughter excitation state can be selected.
+                 -> see `get_isotope_data` function in tools.utils_opengate
+                 Example:
+                    - If source.particle was `ion 71 177`, i.e. a Lu177 source
+                      Lu177 can decay to different Hf177 excitation states
+                      You can check them with get_isotope_data('ion 71 177')
+                      Most probable states are:
+                      - Hf177[321.316] This states in turn decays with highest probability
+                        to the lower excited state 112.950 keV, emitting a 208.366 keV gamma.
+                        To choose those gammas -> Hf177[321.316]_208.366
+                      - Hf177[112.950] This state decays to the ground state with a
+                        112.950 keV gamma -> Hf177[112.950]_112.950
+        entry_stop (int, optional): Number of entries to read from the ROOT file. Defaults to None.
+
+    Returns:
+        pandas.DataFrame: DataFrame containing CCevents.
+    """
+    df = uproot.open(file_path)['Hits'].arrays(library='pd')
+
+    # Inspired by ccmod_ideal_singles in Gate 10.0.3
+    df = df.query("PDGCode == 22 and ParentID == 0 and ProcessDefinedStep not in ['Transportation', 'Rayl']")
+    df.loc[:, "IdealTotalEnergyDeposit"] = df["PreKineticEnergy"] - df["PostKineticEnergy"]
+
+    # Inspired by ccmod_ideal_coincidences in Gate 10.0.3
+    nevents = df["EventID"].value_counts()
+    df = df.loc[df["EventID"].isin(nevents[nevents > 1].index)]
+    df.loc[:, "CoincID"] = pandas.factorize(df["EventID"])[0]
+
+    # required columns assumed present in `coinc`
+    df = df.loc[:, ["CoincID", "EventID", "GlobalTime",
+                       "PostPosition_X", "PostPosition_Y", "PostPosition_Z",
+                       "IdealTotalEnergyDeposit"]]
+
+    # sort and ordinal per CoincID
+    df.sort_values(["CoincID", "GlobalTime"], inplace=True)
+    df["ord"] = df.groupby("CoincID").cumcount() + 1
+
+    sizes = df.groupby("CoincID").size()
+
+    if sizes.empty:
+        cols = ["EventID", "n"]
+        # default to up to 2 positions/energies for column set when empty
+        for i in range(1, 3):
+            cols += [f"evt_{i}", f"PositionX_{i}", f"PositionY_{i}", f"PositionZ_{i}", f"Energy (keV)_{i}"]
+        return pandas.DataFrame(columns=cols)
+
+    max_n = int(sizes.max())
+
+    if sum_subsequent:
+        # Prepare first and second rows (positions come from first two hits)
+        first = df[df["ord"] == 1].set_index("CoincID")
+        second = df[df["ord"] == 2].set_index("CoincID")
+        sum_energy = df.groupby("CoincID")["IdealTotalEnergyDeposit"].sum()
+
+        out = pandas.DataFrame(index=sizes.index)
+        out["EventID"] = first["EventID"]
+        out["n"] = 2
+
+        # evt columns (always integer)
+        out["evt_1"] = 1
+        out["evt_2"] = 2
+
+        out["PositionX_1"] = first["PostPosition_X"]
+        out["PositionY_1"] = first["PostPosition_Y"]
+        out["PositionZ_1"] = first["PostPosition_Z"]
+
+        out["PositionX_2"] = second["PostPosition_X"]
+        out["PositionY_2"] = second["PostPosition_Y"]
+        out["PositionZ_2"] = second["PostPosition_Z"]
+
+        out["Energy (keV)_1"] = first["IdealTotalEnergyDeposit"] * 1000
+        # energy_2 = sum(all) - first
+        out["Energy (keV)_2"] = (sum_energy - first["IdealTotalEnergyDeposit"]) * 1000
+
+        # Reset index to return regular DataFrame
+        result = out.reset_index(drop=True)
+
+    else:
+        # pivot positions and energies by ordinal
+        posx = df.pivot(index="CoincID", columns="ord", values="PostPosition_X")
+        posy = df.pivot(index="CoincID", columns="ord", values="PostPosition_Y")
+        posz = df.pivot(index="CoincID", columns="ord", values="PostPosition_Z")
+        energy = df.pivot(index="CoincID", columns="ord", values="IdealTotalEnergyDeposit") * 1000
+
+        out = pandas.DataFrame(index=sizes.index)
+        # EventID and n
+        out["EventID"] = df.groupby("CoincID")["EventID"].first()
+        out["n"] = sizes
+
+        # For each possible ordinal create columns; evt_i kept as integer constant
+        for i in range(1, max_n + 1):
+            out[f"evt_{i}"] = i
+            out[f"PositionX_{i}"] = posx.get(i)
+            out[f"PositionY_{i}"] = posy.get(i)
+            out[f"PositionZ_{i}"] = posz.get(i)
+            out[f"Energy (keV)_{i}"] = energy.get(i)
+
+        # Reset index
+        result = out.reset_index(drop=True)
+
+    # Ensure column order matches original pattern
+    cols = ["EventID", "n"]
+    limit = 2 if sum_subsequent else max_n
+    for i in range(1, limit + 1):
+        cols += [f"evt_{i}", f"PositionX_{i}", f"PositionY_{i}", f"PositionZ_{i}", f"Energy (keV)_{i}"]
+    # If some columns beyond `limit` accidentally exist, reindex will drop them
+    result = result.reindex(columns=cols)
+    return result
+
+
 @log_offline_process('CCevents', input_type = 'dataframe')
 def pixelClusters2CCevents(pixelClusters, thick, speed, twindow):
     """
