@@ -262,3 +262,22 @@ def compare_recos(volumes, names=None, slice_axis=2):
             ax.axis('off')
     plt.tight_layout()
     plt.show()
+
+
+def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
+    """
+    Adds a vertical line and a label to a spectrum plot. Useful to mark known emission lines.
+
+    Args:
+        ax (matplotlib.axes.Axes): The matplotlib Axes object to draw on.
+        text (str): The label text to display near the line.
+        energy (float): The x-coordinate (energy value) where the line is drawn.
+        color (str): The color of the line and text.
+        fontsize (int, optional): The font size of the label text. Default is 12.
+        rotation (int, optional): The rotation angle of the label text. Default is 45.
+    """
+    ax.axvline(energy, color=color, linestyle='--', linewidth=1.2, alpha=0.6)
+    ax.text(energy, -0.02, text,
+            transform=ax.get_xaxis_transform(),
+            color=color, fontsize=fontsize, rotation=rotation,
+            ha='center', va='top', clip_on=False)
