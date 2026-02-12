@@ -62,7 +62,7 @@ if __name__ == "__main__":
     #   1. Listing excited states of decay daughters:
     global_log.info(get_isotope_data(source, filter_excited_daughters=True))
     #   2. Listing particles emitted by the source:
-    global_log.info(f"{ghits_df['ParentParticleName'].unique()}\n{'-' * 80}")
+    global_log.info(f"{pd.Series(ghits_df['ParentParticleName'].to_numpy()).value_counts()}\n{'-' * 80}")
     #   3. Listing gamma energies emitted by daughter states:
     mask = (ghits_df['ParentParticleName'].to_numpy() == 'Hf177[321.316]') & \
            (ghits_df['ParticleName'].to_numpy() == 'gamma')
