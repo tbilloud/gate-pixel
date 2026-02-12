@@ -100,7 +100,7 @@ def gHits2CCevents_prototype(file_path, source_MeV, entry_stop=None):
             # All primary energy was deposited
             if full_absorb:
                 n_events_full_edep += 1
-                # Ideally we would use 'ProcessDefinedStep = compt' but, if sim.keep_zero_edep is not set to True:
+                # Ideally we would use 'ProcessDefinedStep = compt' but, if hits.keep_zero_edep is not set to True:
                 # - The compton step is not stored when the recoil electron is tracked
                 # - ProcessDefinedStep might be 'Transportation' instead of 'compt'
                 # => we can sort steps by time
@@ -545,7 +545,7 @@ def gHits2CCevents(file_path, source_MeV, entry_stop=None):
 @log_offline_process('CCevents', input_type='file')
 def gHits2CCevents_0edep(file_path, sum_subsequent=False):
     """
-    Same as gHits2CCevents but when using sim.keep_zero_edep = True
+    Same as gHits2CCevents but when using hits.keep_zero_edep = True
     => Files are larger but the function is simpler and faster
 
     TODO as opposed to gHits2CCevents, full absorption is not checked here.
