@@ -23,7 +23,7 @@ for i in range(2):
 
 
 @log_offline_process('CCevents', input_type='file')
-def gHits2CCevents_prototype(file_path, source_MeV, entry_stop=None):
+def gHits2CCevents_prototype(file_path, source_MeV, entry_stop=None, abs_tol_ion_MeV=1e-4):
     """
     Read Gate hits (from DigitizerHitsCollectionActor) and filter CCevents.
 
@@ -48,6 +48,8 @@ def gHits2CCevents_prototype(file_path, source_MeV, entry_stop=None):
                       - Hf177[112.950] This state decays to the ground state with a
                         112.950 keV gamma -> Hf177[112.950]_112.950
         entry_stop (int, optional): Number of entries to read from the ROOT file. Defaults to None.
+        abs_tol_ion_MeV (float): in case of ion sources, tolerance for matching source_MeV and hits' energy sums.
+            Accomodates: Geant4/literature discrepancies and float imprecision.
 
     Returns:
         pandas.DataFrame: DataFrame containing CCevents.
@@ -89,7 +91,7 @@ def gHits2CCevents_prototype(file_path, source_MeV, entry_stop=None):
                 part_id = grp[grp['ParentParticleName'] == daughter_name]['TrackID'].values[0]
                 descendants = find_descendants(grp, part_id)
                 totenergy = grp[grp['TrackID'].isin(descendants.union({part_id}))]['TotalEnergyDeposit'].sum()
-                full_absorb = math.isclose(totenergy, source_MeV, rel_tol=0.0, abs_tol=1e-6)
+                full_absorb = math.isclose(totenergy, source_MeV, rel_tol=0.0, abs_tol=abs_tol_ion_MeV)
                 if full_absorb:
                     grp = grp[grp['TrackID'].isin(descendants.union({part_id}))]
                     grp.loc[:, 'TrackID'] -= (part_id - 1)
@@ -138,7 +140,7 @@ def gHits2CCevents_prototype(file_path, source_MeV, entry_stop=None):
     return df
 
 @log_offline_process('CCevents', input_type='file')
-def gHits2CCevents(file_path, source_MeV, entry_stop=None):
+def gHits2CCevents(file_path, source_MeV, entry_stop=None, abs_tol_ion_MeV=1e-4):
     """
     Same as gHits2CCevents_prototype but faster implementation using NumPy arrays.
     Obtained from GPT-5 mini by feeding it the prototype and asking for optimizations.
@@ -231,7 +233,7 @@ def gHits2CCevents(file_path, source_MeV, entry_stop=None):
             relevant_ids = list(descendants) + [part_id]
             relevant_mask = np.isin(track_ids[idx_slice], relevant_ids)
             totenergy = total_edep[idx_slice][relevant_mask].sum()
-            full_absorb = math.isclose(totenergy, source_MeV, rel_tol=0.0, abs_tol=1e-6)
+            full_absorb = math.isclose(totenergy, source_MeV, rel_tol=0.0, abs_tol=abs_tol_ion_MeV)
             if not full_absorb:
                 continue
             # global indices of relevant hits
@@ -304,7 +306,6 @@ def gHits2CCevents(file_path, source_MeV, entry_stop=None):
 #                              entry_stop=None):
 #     """
 #     Read Gate hits (from DigitizerHitsCollectionActor) and filter CCevents.
-#     TODO: use track IDs instead of the source energy and tolerance since to avoid losing Doppler-broadened events.
 #
 #     Args:
 #         file_path (str): Path to the ROOT file containing hit data.
