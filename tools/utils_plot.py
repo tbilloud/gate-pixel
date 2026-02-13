@@ -281,3 +281,87 @@ def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
             transform=ax.get_xaxis_transform(),
             color=color, fontsize=fontsize, rotation=rotation,
             ha='center', va='top', clip_on=False)
+
+
+def plot_radioactive_decay_spectra(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6)):
+    """
+    Plot spectra of decay products from an isotope source.
+
+    Use case: run a simulation with a large world made of a high-Z material surrounding the source, e.g.:
+        sim = Simulation()
+        sim.physics_manager.enable_decay = True
+        sim.world.material = "G4_Ac"
+        sim.world.size = [1 * g4_units.m, 1 * g4_units.m, 1 * g4_units.m]
+        hits = sim.add_actor('DigitizerHitsCollectionActor', 'Hits')
+        hits.attached_to = sim.world
+        hits.attributes = ['EventID', 'TrackID', 'ParticleName', 'TrackCreatorProcess', 'KineticEnergy']
+        hits.output_filename = 'test.root'
+        source = sim.add_source("GenericSource", "source")
+        #source.particle, source.half_life = "ion 92 238", 4.463e9 * g4_units.year  # U238
+        source.particle, source.half_life = "ion 71 177", 6.65 * g4_units.day # Lu177
+        source.n = 1e4
+        sim.run()
+        df_hits = uproot.open('./test.root')[hits.name].arrays(library='pd')
+        plot_radioactive_decay_spectra(df_hits, min_keV=0, hist_range_keV=[0, 1000], bins=1000)
+
+    Notes:
+
+        Some sources (e.g. U238) emit lots of:
+         - Different excited states for the daughter nucleus(i), leading to a cluterred legend
+         - low energy electrons (internal conversion, Auger)
+         => Set min_keV > 1 to avoid
+
+        In case of beta decays, one will see neutrinos if `hits.keep_zero_edep = True`
+
+
+    """
+
+    # build mask with NumPy arrays to avoid awkward-pandas issues
+    mask = (df_hits['TrackCreatorProcess'].to_numpy() == 'RadioactiveDecay') & \
+           (df_hits['KineticEnergy'].to_numpy() > (min_keV/1000)) & \
+           (df_hits['KineticEnergy'].to_numpy() < (max_keV/1000))
+
+    cols = ['EventID', 'TrackID', 'ParticleName', 'KineticEnergy']
+    df_r = df_hits.loc[mask, cols].copy()
+    if df_r.empty:
+        print("No RadioactiveDecay tracks with KineticEnergy > 0 found.")
+        return
+
+    # ensure numeric float array for KineticEnergy
+    df_r['KineticEnergy'] = df_r['KineticEnergy'].to_numpy().astype(float)
+
+    # for each track take the step with the highest kinetic energy
+    idx = df_r.groupby(['EventID', 'TrackID'])['KineticEnergy'].idxmax()
+    df_first = df_r.loc[idx].reset_index(drop=True)
+    df_first['KineticEnergy'] = df_first['KineticEnergy'].mul(1000)
+
+    # prepare bins / range
+    ke_min, ke_max = df_first['KineticEnergy'].min(), df_first['KineticEnergy'].max()
+    if hist_range_keV is None:
+        hist_range_keV = (max(0.0, ke_min * 0.9), ke_max * 1.1)
+    bin_edges = np.linspace(hist_range_keV[0], hist_range_keV[1], bins + 1)
+
+    # plot overall histogram (filled, faint)
+    plt.figure(figsize=figsize)
+    plt.hist(df_first['KineticEnergy'].to_numpy(), bins=bin_edges,
+             histtype='stepfilled', alpha=0.18, label='all particles')
+
+    # overlay per-ParticleName histograms (e- in red and gamma in green, as in default opengate visualization)
+    for pname, grp in df_first.groupby('ParticleName'):
+        data = grp['KineticEnergy'].to_numpy()
+        if data.size == 0:
+            continue
+        color = None
+        if pname == 'e-':
+            color = 'red'
+        elif pname == 'gamma':
+            color = 'green'
+        plt.hist(data, bins=bin_edges, histtype='step', linewidth=1.5, label=str(pname), color=color)
+
+    plt.xlim(hist_range_keV[0], hist_range_keV[1])
+    plt.xlabel('KineticEnergy (keV)')
+    plt.ylabel('Counts')
+    plt.title('Kinetic energy of tracks from RadioactiveDecay (first/highest step per track)')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
