@@ -283,7 +283,7 @@ def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
             ha='center', va='top', clip_on=False)
 
 
-def plot_radioactive_decay_spectra(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6)):
+def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6)):
     """
     Plot spectra of decay products from an isotope source.
 
