@@ -417,7 +417,7 @@ def plot_energy_hist_by_time(df, interval_ns, bins=100, x_range=None, max_plots=
     cmap_vals = cmap(np.linspace(0, 1, nplots))
     for ax, (k, t0, t1, ev) in zip(axes_flat, interval_plots):
         ax.hist(ev, bins=bins, range=x_range, color=cmap_vals[k % len(cmap_vals)], edgecolor='k', alpha=0.8)
-        ax.set_title(f"t ∈ [{t0:.1f}, {t1:.1f}) ns\nN={len(ev)}")
+        ax.set_title(f"t ∈ [{t0/1e9:.1f}, {t1/1e9:.1f}) s\nN={len(ev)}")
         ax.set_xlabel('Energy (keV)')
         ax.set_ylabel('Counts')
         ax.grid(axis='y', linestyle='--', alpha=0.4)

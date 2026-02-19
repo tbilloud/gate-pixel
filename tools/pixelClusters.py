@@ -83,32 +83,49 @@ def pixelHits2pixelClusters(pixelHits, npix, window_ns):
     return df
 
 
-def clog2pixelClusters(file_path):
+def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=False, border_values=(1, 256)):
     """
     Convert a clog file from the Pixet software (Advacam) to a DataFrame of pixel clusters.
     See: https://wiki.advacam.cz/index.php/PIXet
     TODO: validate
+
+    Optional limits:
+      - max_lines: stop after this many lines (int or None)
+      - max_bytes: stop after reading this many bytes from the file (int or None)
+      - omit_border: if True, omit clusters touching the border coordinates
+      - border_values: iterable of coordinate values considered the border (ints)
     """
     events = []
     frame_time = None
     frame_re = re.compile(r'^Frame\s+\d+\s+\(\s*([^,]+)\s*,')
     bracket_re = re.compile(r'\[([^\]]+)\]')
 
-    with open(file_path, 'r') as f:
-        for raw in f:
-            line = raw.strip()
+    if max_bytes is not None:
+        max_bytes = int(max_bytes)
+
+    bytes_read = 0
+    border_set = set(border_values)
+
+    with open(file_path, 'rb') as f:
+        for lineno, raw in enumerate(f, start=1):
+            bytes_read += len(raw)
+            if max_lines is not None and lineno > max_lines:
+                break
+            if max_bytes is not None and bytes_read > max_bytes:
+                break
+
+            line = raw.decode('utf-8', errors='replace').strip()
             if not line:
                 continue
+
             m = frame_re.match(line)
             if m:
-                # parse frame start time (ns)
                 try:
                     frame_time = float(m.group(1))
                 except ValueError:
                     frame_time = 0.0
                 continue
 
-            # line is an event: find all bracket groups
             groups = bracket_re.findall(line)
             if not groups:
                 continue
@@ -130,15 +147,20 @@ def clog2pixelClusters(file_path):
             if not hits:
                 continue
 
-            # compute totals and weighted coords
             total_e = sum(h[2] for h in hits)
             if total_e == 0:
-                # avoid division by zero: fall back to mean pixel coords
                 x_w = sum(h[0] for h in hits) / len(hits)
                 y_w = sum(h[1] for h in hits) / len(hits)
             else:
                 x_w = sum(h[0] * h[2] for h in hits) / total_e
                 y_w = sum(h[1] * h[2] for h in hits) / total_e
+
+            # omit clusters touching the border (compare rounded coordinates)
+            if omit_border and (int(round(x_w)) in border_set or int(round(y_w)) in border_set):
+                # optional: still update byte count/loop control after skipping
+                if max_bytes is not None and bytes_read >= max_bytes:
+                    break
+                continue
 
             toa = (frame_time if frame_time is not None else 0.0) + min(h[3] for h in hits)
 
@@ -148,6 +170,9 @@ def clog2pixelClusters(file_path):
                 'Energy (keV)': total_e,
                 'ToA (ns)': toa
             })
+
+            if max_bytes is not None and bytes_read >= max_bytes:
+                break
 
     df = pd.DataFrame(events, columns=['X', 'Y', 'Energy (keV)', 'ToA (ns)'])
     return df
