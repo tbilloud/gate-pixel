@@ -371,6 +371,8 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
 def plot_energy_hist_by_time(df, interval_ns, bins=100, x_range=None, max_plots=20, ncols=4, cmap=plt.cm.viridis):
     """
     For pixelClusters, plot energy histograms for each ToA time interval of width `interval_ns` (ns).
+    Useful in case of long measurements with time-varying conditions (e.g. source decay, sensor instability, heating).
+
     - df: DataFrame with columns 'Energy (keV)' and 'ToA (ns)'.
     - interval_ns: width of each time interval in ns (float).
     - bins: histogram bins (int or sequence).
