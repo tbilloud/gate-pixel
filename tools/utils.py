@@ -8,7 +8,9 @@ from pathlib import Path
 import numpy as np
 import pandas
 from tools.logging_custom import global_log
-
+import re
+from typing import List
+from scipy.spatial.transform import Rotation
 
 def get_pixID(x, y, n_pixels=256):
     return x * n_pixels + y
@@ -149,3 +151,89 @@ def log_offline_process(object_name, input_type):
         return wrapper
 
     return decorator
+
+
+def translation_and_facing_rotation(d: float, theta_deg: float, phi_deg: float):
+    """
+    Return (translation, rotation_matrix) where:
+    - translation is a 3-list [x,y,z] placing the sensor at distance `d`
+      using spherical coords: theta = polar (from +z), phi = azimuth (from +x).
+    - rotation_matrix is a 3x3 numpy array that orients the sensor so its
+      local +z axis points toward the origin (i.e. the sensor faces the origin).
+      TODO: rotation matrix should be np.eye(3) if theta=phi=0, not [1,0,0 ; 0,-1,0 ; 0,0,-1]
+    """
+    th = np.deg2rad(theta_deg)
+    ph = np.deg2rad(phi_deg)
+
+    # spherical -> cartesian (x, y, z)
+    x = d * np.sin(th) * np.cos(ph)
+    y = d * np.sin(th) * np.sin(ph)
+    z = d * np.cos(th)
+    t = np.array([x, y, z], dtype=float)
+
+    # desired direction for local +z to point to: vector from sensor to origin
+    target = -t
+    norm = np.linalg.norm(target)
+    if norm == 0:
+        # sensor at origin: no preferred orientation
+        return t.tolist(), np.eye(3)
+
+    tgt = target / norm
+    src = np.array([0.0, 0.0, 1.0])  # local +z
+
+    dot = np.clip(np.dot(src, tgt), -1.0, 1.0)
+    if np.isclose(dot, 1.0):
+        R = np.eye(3)  # already aligned
+    elif np.isclose(dot, -1.0):
+        # 180 deg rotation: choose any orthogonal axis, e.g. x-axis
+        R = Rotation.from_rotvec(np.pi * np.array([1.0, 0.0, 0.0])).as_matrix()
+    else:
+        axis = np.cross(src, tgt)
+        axis_norm = np.linalg.norm(axis)
+        axis_unit = axis / axis_norm
+        angle = np.arccos(dot)
+        R = Rotation.from_rotvec(axis_unit * angle).as_matrix()
+
+    return t.tolist(), R
+
+
+def read_clog(path: Path) -> np.ndarray:
+    """
+    Read a clog file from the Pixet software (Advacam).
+
+     `path` to the file where each line contains multiple hits like:
+
+      Frame 1
+      [pixX, pixY, energy, time] [pixX, pixY, energy, time] ...
+
+      Frame 2
+      ...
+
+     See: https://wiki.advacam.cz/index.php/PIXet
+
+    Returns an array with one summed energy per line (cluster).
+    # TODO: extend this function to also return positions and times if needed.
+    """
+
+    energies: List[float] = []
+    patt = re.compile(r'\[([^\]]+)\]')
+    with open(path, 'r') as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            hits = patt.findall(line)
+            if not hits:
+                continue
+            s = 0.0
+            for hit in hits:
+                parts = [p.strip() for p in hit.split(',')]
+                if len(parts) < 3:
+                    continue
+                try:
+                    e = float(parts[2])
+                except ValueError:
+                    continue
+                s += e
+            energies.append(s)
+    return np.array(energies, dtype=float)
