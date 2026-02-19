@@ -1,3 +1,4 @@
+import math
 import sys
 import numpy as np
 from tools.logging_custom import global_log
@@ -365,3 +366,63 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+
+def plot_energy_hist_by_time(df, interval_ns, bins=100, x_range=None, max_plots=20, ncols=4, cmap=plt.cm.viridis):
+    """
+    For pixelClusters, plot energy histograms for each ToA time interval of width `interval_ns` (ns).
+    - df: DataFrame with columns 'Energy (keV)' and 'ToA (ns)'.
+    - interval_ns: width of each time interval in ns (float).
+    - bins: histogram bins (int or sequence).
+    - x_range: tuple (xmin, xmax) for histogram x-axis; None to auto.
+    - max_plots: maximum number of subplots to draw (skips later intervals).
+    - ncols: number of columns in subplot grid.
+    Returns the matplotlib Figure and list of Axes.
+    """
+    toa = df['ToA (ns)'].to_numpy()
+    energies = df['Energy (keV)'].to_numpy()
+
+    tmin = float(np.nanmin(toa))
+    tmax = float(np.nanmax(toa))
+    # build interval edges (right open)
+    edges = np.arange(tmin, tmax + interval_ns, interval_ns)
+    if len(edges) < 2:
+        raise ValueError("interval_ns too large or DataFrame ToA has insufficient range")
+
+    # assign interval index
+    idx = np.digitize(toa, edges, right=False) - 1  # 0-based interval index
+    n_intervals = len(edges) - 1
+
+    # prepare plotting
+    interval_plots = []
+    for i in range(n_intervals):
+        mask = (idx == i)
+        if not np.any(mask):
+            continue
+        interval_plots.append((i, edges[i], edges[i+1], energies[mask]))
+
+    if not interval_plots:
+        raise ValueError("No events found in any interval")
+
+    # limit number of plots
+    interval_plots = interval_plots[:max_plots]
+    nplots = len(interval_plots)
+    nrows = math.ceil(nplots / ncols)
+
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4*ncols, 3*nrows), squeeze=False)
+    axes_flat = axes.flatten()
+
+    cmap_vals = cmap(np.linspace(0, 1, nplots))
+    for ax, (k, t0, t1, ev) in zip(axes_flat, interval_plots):
+        ax.hist(ev, bins=bins, range=x_range, color=cmap_vals[k % len(cmap_vals)], edgecolor='k', alpha=0.8)
+        ax.set_title(f"t ∈ [{t0:.1f}, {t1:.1f}) ns\nN={len(ev)}")
+        ax.set_xlabel('Energy (keV)')
+        ax.set_ylabel('Counts')
+        ax.grid(axis='y', linestyle='--', alpha=0.4)
+
+    # hide unused axes
+    for ax in axes_flat[nplots:]:
+        ax.axis('off')
+
+    plt.tight_layout()
+    return fig, axes_flat[:nplots]
