@@ -6,6 +6,7 @@ import time
 import pandas as pd
 from tools.utils import get_pixID_2D, log_offline_process
 from tools.pixelHits import PIXEL_ID, TOA, ENERGY_keV, EVENTID
+import re
 
 # Pixel cluster format definition
 PIX_X_ID = 'X'  # pixel X index (starts from 0, bottom left)
@@ -79,4 +80,74 @@ def pixelHits2pixelClusters(pixelHits, npix, window_ns):
 
     df = pd.concat(clusters, ignore_index=True)
 
+    return df
+
+
+def clog2pixelClusters(file_path):
+    """
+    Convert a clog file from the Pixet software (Advacam) to a DataFrame of pixel clusters.
+    See: https://wiki.advacam.cz/index.php/PIXet
+    TODO: validate
+    """
+    events = []
+    frame_time = None
+    frame_re = re.compile(r'^Frame\s+\d+\s+\(\s*([^,]+)\s*,')
+    bracket_re = re.compile(r'\[([^\]]+)\]')
+
+    with open(file_path, 'r') as f:
+        for raw in f:
+            line = raw.strip()
+            if not line:
+                continue
+            m = frame_re.match(line)
+            if m:
+                # parse frame start time (ns)
+                try:
+                    frame_time = float(m.group(1))
+                except ValueError:
+                    frame_time = 0.0
+                continue
+
+            # line is an event: find all bracket groups
+            groups = bracket_re.findall(line)
+            if not groups:
+                continue
+
+            hits = []
+            for g in groups:
+                parts = [p.strip() for p in g.split(',')]
+                if len(parts) < 4:
+                    continue
+                try:
+                    x = float(parts[0])
+                    y = float(parts[1])
+                    e = float(parts[2])
+                    t = float(parts[3])
+                except ValueError:
+                    continue
+                hits.append((x, y, e, t))
+
+            if not hits:
+                continue
+
+            # compute totals and weighted coords
+            total_e = sum(h[2] for h in hits)
+            if total_e == 0:
+                # avoid division by zero: fall back to mean pixel coords
+                x_w = sum(h[0] for h in hits) / len(hits)
+                y_w = sum(h[1] for h in hits) / len(hits)
+            else:
+                x_w = sum(h[0] * h[2] for h in hits) / total_e
+                y_w = sum(h[1] * h[2] for h in hits) / total_e
+
+            toa = (frame_time if frame_time is not None else 0.0) + min(h[3] for h in hits)
+
+            events.append({
+                'X': x_w,
+                'Y': y_w,
+                'Energy (keV)': total_e,
+                'ToA (ns)': toa
+            })
+
+    df = pd.DataFrame(events, columns=['X', 'Y', 'Energy (keV)', 'ToA (ns)'])
     return df
