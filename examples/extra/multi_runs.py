@@ -7,7 +7,7 @@ from tools.reconstruction import reconstruct
 from tools.utils_plot import plot_reco
 from opengate.utility import g4_units
 from tools.allpix import *
-from tools.utils import metric_num, translation_and_facing_rotation
+from tools.utils import metric_num
 import concurrent.futures
 
 mm, keV, Bq = g4_units.mm, g4_units.keV, g4_units.Bq
@@ -46,7 +46,7 @@ def run_sim(output, material='G4_CADMIUM_TELLURIDE', thick_mm=1, source_keV=200,
     source = sim.add_source("GenericSource", "source")
     source.energy.mono = source_keV * keV
     source.position.type = "box"
-    source.position.size = [10 * mm, 10 * mm, 10 * mm]
+    source.position.size = [10 * mm, 10 * mm, 4 * mm]
     source.n = 10 if sim.visu else n
 
     ## ============================
@@ -83,12 +83,13 @@ if __name__ == "__main__":
         'material': 'G4_CADMIUM_TELLURIDE',
         'thick_mm': 10,
         'source_keV': 200,
-        'n': 1e6,
+        'n': 1e5,
         'output': "/media/billoud/029A94FF9A94F101/2nd_DRIVE/temp/multi_runs",
         'vis': False
     }
 
-    translations = [[0, 0, 10], [10, 0, 10], [10, 0, 10], [10, 10, 10]]
+    z = 10
+    translations = [[0, 0, z], [10, 0, z], [-10, 0, z], [0, 10, z], [0, -10, z], [10, 10, z]]
 
     jobs = [{**params, 'translation': [t[0] * mm, t[1] * mm, t[2] * mm]} for t in translations]
     workers = min(len(jobs), max(1, (os.cpu_count() or 2) - 1))
