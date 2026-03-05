@@ -286,9 +286,9 @@ def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
 
 def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6)):
     """
-    Plot spectra of decay products from an isotope source.
+    Plot spectra of decay products from an isotope source that hit the sensor.
 
-    Use case: run a simulation with a large world made of a high-Z material surrounding the source, e.g.:
+    Example usage:
         sim = Simulation()
         sim.physics_manager.enable_decay = True
         sim.world.material = "G4_Ac"
@@ -308,9 +308,9 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
     Notes:
 
         Some sources (e.g. U238) emit lots of:
-         - Different excited states for the daughter nucleus(i), leading to a cluterred legend
+         - excited states of the daughter nucleus(i), leading to a cluttered legend if sensor surrounds the source
          - low energy electrons (internal conversion, Auger)
-         => Set min_keV > 1 to avoid
+        => Set min_keV > 1 to avoid those
 
         In case of beta decays, one will see neutrinos if `hits.keep_zero_edep = True`
 
