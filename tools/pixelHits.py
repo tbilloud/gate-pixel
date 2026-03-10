@@ -39,11 +39,20 @@ def singles2pixelHits(file_path, speed, thick, actor='Singles', nrows=None):
     """
 
     singles = uproot.open(file_path)[actor].arrays(library='pd', entry_stop=nrows)
-    singles['HitUniqueVolumeID'] = singles['HitUniqueVolumeID'].astype(
-        str).str.replace(r'0_', '', regex=True)
+
+    # Deal with pixel IDs
+    # When a track ends at a border pixel, 'HitUniqueVolumeID', which actually is 'PostStepUniqueVolumeID', might be
+    # whatever volume is behind the pixel (e.g. the world). In those cases I replace it with the pre-step. TODO is this solution robust?
+    singles['HitUniqueVolumeID'] = singles['HitUniqueVolumeID'].astype(str)
+    singles['PreStepUniqueVolumeID'] = singles['PreStepUniqueVolumeID'].astype(str)
+    singles['PostStepUniqueVolumeID'] = singles['PostStepUniqueVolumeID'].astype(str)
+    mask = ~singles['HitUniqueVolumeID'].str.contains('0_0_')
+    singles.loc[mask, 'HitUniqueVolumeID'] = singles.loc[mask, 'PreStepUniqueVolumeID']
+    singles['HitUniqueVolumeID'] = singles['HitUniqueVolumeID'].astype(str).str.extract(r'0_0_(\d+)').astype(int) # 'HitUniqueVolumeID' is in the format '0_0_X' with opengate 10.0.1 and 'pixel_param-0_0_X' with 10.0.3 (where X is the pixel ID). This works with both formats.
     singles.rename(columns={'HitUniqueVolumeID': PIXEL_ID}, inplace=True)
-    singles[PIXEL_ID] = singles[PIXEL_ID].str.replace('pixel_param-', '', regex=False)
     singles[PIXEL_ID] = singles[PIXEL_ID].astype(int)
+
+    # Deal with energy and time
     singles.rename(columns={'TotalEnergyDeposit': ENERGY_keV}, inplace=True)
     singles[ENERGY_keV] = singles[ENERGY_keV] * 1e3  # Convert MeV to keV
     singles['GlobalTime'] += (-singles['PostPositionLocal_Z'] + thick / 2) / speed
