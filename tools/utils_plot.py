@@ -360,9 +360,9 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
         plt.hist(data, bins=bin_edges, histtype='step', linewidth=1.5, label=str(pname), color=color)
 
     plt.xlim(hist_range_keV[0], hist_range_keV[1])
-    plt.xlabel('KineticEnergy (keV)')
+    plt.xlabel('Energy (keV)')
     plt.ylabel('Counts')
-    plt.title('Kinetic energy of tracks from RadioactiveDecay (first/highest step per track)')
+    plt.title('Kinetic energy of particles emitted by the source')
     plt.legend()
     plt.tight_layout()
     plt.show()
