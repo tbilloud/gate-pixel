@@ -31,7 +31,8 @@ def process_func(cluster, n_pixels):
         PIX_X_ID: [x],
         PIX_Y_ID: [y],
         ENERGY_keV: [cluster_total_energy],
-        TOA: [cluster_first_TOA]
+        TOA: [cluster_first_TOA],
+        SIZE: [len(cluster)]
     }
     if EVENTID in cluster.columns:
         data[EVENTID] = [int(cluster[EVENTID].min())]
@@ -168,11 +169,12 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
                 'X': x_w,
                 'Y': y_w,
                 'Energy (keV)': total_e,
-                'ToA (ns)': toa
+                'ToA (ns)': toa,
+                'size': len(hits)
             })
 
             if max_bytes is not None and bytes_read >= max_bytes:
                 break
 
-    df = pd.DataFrame(events, columns=['X', 'Y', 'Energy (keV)', 'ToA (ns)'])
+    df = pd.DataFrame(events, columns=['X', 'Y', 'Energy (keV)', 'ToA (ns)', 'size'])
     return df
