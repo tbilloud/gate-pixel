@@ -27,12 +27,16 @@ def pixelHits2onePixelCluster(cluster, n_pixels):
     x = sum(pixX * cluster[ENERGY_keV]) / cluster_total_energy
     y = sum(pixY * cluster[ENERGY_keV]) / cluster_total_energy
 
+    size = len(cluster)
+    delta_toa = cluster[TOA].max() - cluster_first_TOA if size > 1 else float('nan')
+
     data = {
         PIX_X_ID: [x],
         PIX_Y_ID: [y],
         ENERGY_keV: [cluster_total_energy],
         TOA: [cluster_first_TOA],
-        SIZE: [len(cluster)]
+        SIZE: [size],
+        DELTA_TOA: [delta_toa],
     }
     if EVENTID in cluster.columns:
         data[EVENTID] = [int(cluster[EVENTID].min())]
@@ -88,19 +92,11 @@ def pixelHits2pixelClusters(pixelHits, npix, window_ns):
     return df
 
 
-def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=False, border_values=(1, 256)):
+def _parse_clog(file_path, max_lines=None, max_bytes=None):
     """
-    Convert a clog file from the Pixet software (Advacam) to a DataFrame of pixel clusters.
-    See: https://wiki.advacam.cz/index.php/PIXet
-    TODO: validate
-
-    Optional limits:
-      - max_lines: stop after this many lines (int or None)
-      - max_bytes: stop after reading this many bytes from the file (int or None)
-      - omit_border: if True, omit clusters touching the border coordinates
-      - border_values: iterable of coordinate values considered the border (ints)
+    Core clog parser. Yields (hits, frame_time) for each cluster line, where
+    hits is a list of (x, y, energy, toa) tuples.
     """
-    events = []
     frame_time = None
     frame_re = re.compile(r'^Frame\s+\d+\s+\(\s*([^,]+)\s*,')
     bracket_re = re.compile(r'\[([^\]]+)\]')
@@ -109,7 +105,6 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
         max_bytes = int(max_bytes)
 
     bytes_read = 0
-    border_set = set(border_values)
 
     with open(file_path, 'rb') as f:
         for lineno, raw in enumerate(f, start=1):
@@ -149,36 +144,57 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
                     continue
                 hits.append((x, y, e, t))
 
-            if not hits:
-                continue
+            if hits:
+                yield hits, frame_time
 
-            total_e = sum(h[2] for h in hits)
-            if total_e == 0:
-                x_w = sum(h[0] for h in hits) / len(hits)
-                y_w = sum(h[1] for h in hits) / len(hits)
-            else:
-                x_w = sum(h[0] * h[2] for h in hits) / total_e
-                y_w = sum(h[1] * h[2] for h in hits) / total_e
 
-            # omit clusters touching the border (compare rounded coordinates)
-            if omit_border and (int(round(x_w)) in border_set or int(round(y_w)) in border_set):
-                # optional: still update byte count/loop control after skipping
-                if max_bytes is not None and bytes_read >= max_bytes:
-                    break
-                continue
+def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=False, border_values=(1, 256)):
+    """
+    Convert a clog file from the Pixet software (Advacam) to a DataFrame of pixel clusters.
+    See: https://wiki.advacam.cz/index.php/PIXet
+    """
+    events = []
+    border_set = set(border_values)
 
-            toa = (frame_time if frame_time is not None else 0.0) + min(h[3] for h in hits)
+    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
+        total_e = sum(h[2] for h in hits)
+        if total_e == 0:
+            x_w = sum(h[0] for h in hits) / len(hits)
+            y_w = sum(h[1] for h in hits) / len(hits)
+        else:
+            x_w = sum(h[0] * h[2] for h in hits) / total_e
+            y_w = sum(h[1] * h[2] for h in hits) / total_e
 
-            events.append({
-                'X': x_w,
-                'Y': y_w,
-                'Energy (keV)': total_e,
-                'ToA (ns)': toa,
-                'size': len(hits)
+        if omit_border and (int(round(x_w)) in border_set or int(round(y_w)) in border_set):
+            continue
+
+        toa = (frame_time if frame_time is not None else 0.0) + min(h[3] for h in hits)
+        size = len(hits)
+        delta_toa = max(h[3] for h in hits) - min(h[3] for h in hits) if size > 1 else float('nan')
+
+        events.append({
+            PIX_X_ID: x_w, PIX_Y_ID: y_w, ENERGY_keV: total_e,
+            TOA: toa, SIZE: size, DELTA_TOA: delta_toa,
+        })
+
+    return pd.DataFrame(events, columns=[PIX_X_ID, PIX_Y_ID, ENERGY_keV, TOA, SIZE, DELTA_TOA])
+
+
+def clog2pixelHits(file_path, max_lines=None, max_bytes=None):
+    """
+    Convert a clog file to a DataFrame of individual pixel hits, each tagged with a cluster_id.
+    Columns: X, Y, Energy (keV), ToA (ns), cluster_id
+    """
+    rows = []
+    cluster_id = 0
+
+    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
+        t_offset = frame_time if frame_time is not None else 0.0
+        for x, y, e, t in hits:
+            rows.append({
+                PIX_X_ID: x, PIX_Y_ID: y, ENERGY_keV: e,
+                TOA: t_offset + t, 'cluster_id': cluster_id,
             })
+        cluster_id += 1
 
-            if max_bytes is not None and bytes_read >= max_bytes:
-                break
-
-    df = pd.DataFrame(events, columns=['X', 'Y', 'Energy (keV)', 'ToA (ns)', 'size'])
-    return df
+    return pd.DataFrame(rows, columns=[PIX_X_ID, PIX_Y_ID, ENERGY_keV, TOA, 'cluster_id'])
