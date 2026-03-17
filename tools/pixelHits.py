@@ -22,23 +22,26 @@ pixelHits_columns = [PIXEL_ID, TOA, ENERGY_keV]  # ADD / REMOVE columns as neede
 EVENTID = 'EventID'  # optional, used for simulated hits only
 
 
-@log_offline_process('pixelHits', input_type='file')
-def singles2pixelHits(file_path, speed, thick, actor='Singles', nrows=None):
+@log_offline_process('pixelHits', input_type='file_or_dataframe')
+def singles2pixelHits(file_path_or_df, speed, thick, actor='Singles', nrows=None):
     """
-    Converts a ROOT file containing Gate singles into a DataFrame of pixelHits.
+    Converts Gate singles into a DataFrame of pixelHits.
 
     Args:
-        file_path (str): Path to the Gate's ROOT file containing singles.
+        file_path_or_df (str | Path | pd.DataFrame): Path to the Gate ROOT file, or a DataFrame already loaded.
         speed (float): Charge propagation speed in the sensor (unit must be consistent with the 'thick' parameter).
         thick (float): Sensor thickness (unit must be consistent with the 'speed' parameter).
-        actor (str, optional): Name of the Gate actor used to get singles. The actor can be e.g. DigitizerReadoutActor or DigitizerBlurringActor, but its name is user defined. Defaults to 'Singles'.
-        nrows (int, optional): Maximum number of rows to read from the file. If None, reads all rows.
+        actor (str, optional): Name of the Gate actor used to get singles. Only used when a file path is given. Defaults to 'Singles'.
+        nrows (int, optional): Maximum number of rows to read from the file. If None, reads all rows. Ignored when a DataFrame is given.
 
     Returns:
         pandas.DataFrame: DataFrame containing pixelHits.
     """
 
-    singles = uproot.open(file_path)[actor].arrays(library='pd', entry_stop=nrows)
+    if isinstance(file_path_or_df, pd.DataFrame):
+        singles = file_path_or_df.copy()
+    else:
+        singles = uproot.open(file_path_or_df)[actor].arrays(library='pd', entry_stop=nrows)
 
     # Deal with pixel IDs
     # When a track ends at a border pixel, 'HitUniqueVolumeID', which actually is 'PostStepUniqueVolumeID', might be

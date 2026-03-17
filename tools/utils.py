@@ -125,6 +125,9 @@ def log_offline_process(object_name, input_type):
             if input_type == 'file':
                 if not os.path.isfile(args[0]):
                     global_log.error(f"Input file '{args[0]}' not found.")
+            elif input_type == 'file_or_dataframe':
+                if not isinstance(args[0], pandas.DataFrame) and not os.path.isfile(args[0]):
+                    global_log.error(f"Input '{args[0]}' is neither a DataFrame nor a valid file.")
             elif input_type == 'dataframe':
                 if args[0].empty:
                     global_log.error(f"Input dataframe is empty.")
