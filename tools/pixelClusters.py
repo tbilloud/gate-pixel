@@ -4,7 +4,7 @@
 
 import time
 import pandas as pd
-from tools.utils import get_pixID_2D, log_offline_process
+from tools.utils import get_pixID, get_pixID_2D, log_offline_process
 from tools.pixelHits import PIXEL_ID, TOA, ENERGY_keV, EVENTID
 import re
 
@@ -180,10 +180,10 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
     return pd.DataFrame(events, columns=[PIX_X_ID, PIX_Y_ID, ENERGY_keV, TOA, SIZE, DELTA_TOA])
 
 
-def clog2pixelHits(file_path, max_lines=None, max_bytes=None):
+def clog2pixelHits(file_path, npix, max_lines=None, max_bytes=None):
     """
     Convert a clog file to a DataFrame of individual pixel hits, each tagged with a cluster_id.
-    Columns: X, Y, Energy (keV), ToA (ns), cluster_id
+    Columns: PixelID (int16), Energy (keV), ToA (ns), cluster_id
     """
     rows = []
     cluster_id = 0
@@ -192,9 +192,9 @@ def clog2pixelHits(file_path, max_lines=None, max_bytes=None):
         t_offset = frame_time if frame_time is not None else 0.0
         for x, y, e, t in hits:
             rows.append({
-                PIX_X_ID: x, PIX_Y_ID: y, ENERGY_keV: e,
+                PIXEL_ID: get_pixID(int(x), int(y), npix), ENERGY_keV: e,
                 TOA: t_offset + t, 'cluster_id': cluster_id,
             })
         cluster_id += 1
 
-    return pd.DataFrame(rows, columns=[PIX_X_ID, PIX_Y_ID, ENERGY_keV, TOA, 'cluster_id'])
+    return pd.DataFrame(rows, columns=[PIXEL_ID, ENERGY_keV, TOA, 'cluster_id'])
