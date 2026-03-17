@@ -368,6 +368,87 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
     plt.show()
 
 
+def plot_cluster_viewer(pixel_hits, npix, min_size=60):
+    """
+    Interactive 2D cluster viewer for pixelHits tagged with cluster ids.
+    Each cluster is shown as a 2D heatmap of pixel energies with Prev/Next navigation.
+
+    Args:
+        pixel_hits (pd.DataFrame): Pixel hits with columns PixelID (int16), Energy (keV), and cluster_id.
+        npix (int): Number of pixels per row/column (used to convert PixelID to X, Y).
+        min_size (int): Minimum cluster size to display.
+    """
+    if 'cluster_id' not in pixel_hits.columns:
+        raise ValueError("pixel_hits must contain a 'cluster_id' column. "
+                         "Use clog2pixelHits() or add cluster_id to your DataFrame.")
+
+    from tools.pixelHits import PIXEL_ID
+    from tools.pixelClusters import SIZE
+    from tools.utils import get_pixID_2D
+
+    # compute per-cluster metadata from hits
+    meta = pixel_hits.groupby('cluster_id').agg(
+        **{SIZE: ('cluster_id', 'size'), ENERGY_keV: (ENERGY_keV, 'sum')}
+    ).reset_index()
+    big = meta[meta[SIZE] > min_size]
+    big_ids = big['cluster_id'].tolist()
+    big_meta = big.reset_index(drop=True)
+    big_groups = [pixel_hits[pixel_hits['cluster_id'] == cid] for cid in big_ids]
+
+    print(f"Clusters with size > {min_size}: {len(big_groups)}")
+    if not big_groups:
+        return
+
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt_tk
+    from matplotlib.widgets import Button
+
+    fig, (ax_img, ax_cbar) = plt_tk.subplots(1, 2, gridspec_kw={'width_ratios': [20, 1]})
+    fig.subplots_adjust(bottom=0.2)
+    state = {'idx': 0, 'cbar': None}
+
+    def draw_cluster(idx):
+        ax_img.clear()
+        ax_cbar.clear()
+        grp = big_groups[idx]
+        pids = grp[PIXEL_ID].values
+        xs = np.array([get_pixID_2D(p, npix)[0] for p in pids], dtype=int)
+        ys = np.array([get_pixID_2D(p, npix)[1] for p in pids], dtype=int)
+        es = grp[ENERGY_keV].values
+        x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max()
+        grid = np.full((y1 - y0 + 1, x1 - x0 + 1), np.nan)
+        for x, y, e in zip(xs, ys, es):
+            grid[y - y0, x - x0] = e
+        im = ax_img.imshow(grid, origin='lower', extent=(x0 - .5, x1 + .5, y0 - .5, y1 + .5),
+                           aspect='equal', cmap='hot')
+        row = big_meta.iloc[idx]
+        ax_img.set_title(f"Cluster {idx + 1}/{len(big_groups)}  —  "
+                         f"size={int(row[SIZE])}, E={row[ENERGY_keV]:.1f} keV")
+        ax_img.set_xlabel('Pixel X')
+        ax_img.set_ylabel('Pixel Y')
+        fig.colorbar(im, cax=ax_cbar, label='Energy (keV)')
+        fig.canvas.draw_idle()
+
+    def on_prev(_):
+        state['idx'] = (state['idx'] - 1) % len(big_groups)
+        draw_cluster(state['idx'])
+
+    def on_next(_):
+        state['idx'] = (state['idx'] + 1) % len(big_groups)
+        draw_cluster(state['idx'])
+
+    ax_prev = fig.add_axes((0.3, 0.05, 0.15, 0.06))
+    ax_next = fig.add_axes((0.55, 0.05, 0.15, 0.06))
+    btn_prev = Button(ax_prev, '← Prev')
+    btn_next = Button(ax_next, 'Next →')
+    btn_prev.on_clicked(on_prev)
+    btn_next.on_clicked(on_next)
+
+    draw_cluster(0)
+    plt_tk.show()
+
+
 def plot_energy_hist_by_time(df, interval_ns, bins=100, x_range=None, max_plots=20, ncols=4, cmap=plt.cm.viridis):
     """
     For pixelClusters, plot energy histograms for each ToA time interval of width `interval_ns` (ns).
