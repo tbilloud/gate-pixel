@@ -284,7 +284,7 @@ def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
             ha='center', va='top', clip_on=False)
 
 
-def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6)):
+def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6), log_x=False):
     """
     Plot spectra of decay products from an isotope source that hit the sensor.
 
@@ -315,6 +315,14 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
         In case of beta decays, one will see neutrinos if `hits.keep_zero_edep = True`
 
 
+    Args:
+        df_hits: DataFrame of hits
+        min_keV: minimum energy
+        max_keV: maximum energy
+        bins: number of bins
+        hist_range_keV: range for histogram
+        figsize: figure size
+        log_x: if True, plot x-axis in log scale
     """
 
     # build mask with NumPy arrays to avoid awkward-pandas issues
@@ -359,6 +367,8 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
             color = 'green'
         plt.hist(data, bins=bin_edges, histtype='step', linewidth=1.5, label=str(pname), color=color)
 
+    if log_x:
+        plt.xscale('log')
     plt.xlim(hist_range_keV[0], hist_range_keV[1])
     plt.xlabel('Energy (keV)')
     plt.ylabel('Counts')
