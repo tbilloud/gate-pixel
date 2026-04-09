@@ -67,6 +67,10 @@ class QuadNode:
         if not self.div and len(self.points) < self.cap:
             self.points.append((x, y))
             return True
+        # Can't subdivide further – just accumulate here
+        if self.xmin >= self.xmax and self.ymin >= self.ymax:
+            self.points.append((x, y))
+            return True
         if not self.div:
             self._subdivide()
         self._insert_into_children(x, y)
