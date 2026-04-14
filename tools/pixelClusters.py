@@ -2,9 +2,8 @@
 # Easy to read, but not performant. See pixelClusters_custom.py for faster clustering.
 # Time of pixelHits2pixelClusters() is not linear with number of hits (e.g. 100k 200 sec, 1M 13000 sec on my machine)
 
-import time
 import pandas as pd
-from tools.utils import get_pixID, get_pixID_2D, log_offline_process
+from tools.utils import get_pixID_2D, log_offline_process
 from tools.pixelHits import PIXEL_ID, TOA, ENERGY_keV, EVENTID
 import re
 
@@ -148,6 +147,50 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
                 yield hits, frame_time
 
 
+def filter_clog_by_energy(input_path, output_path, min_energy_keV=1000.0):
+    """
+    Read a clog file and write a new one keeping only clusters whose total
+    pixel-hit energy (sum of all hit energies) is >= *min_energy_keV*.
+
+    Args:
+        input_path:      Path to the source .clog file.
+        output_path:     Path for the filtered output .clog file.
+        min_energy_keV:  Minimum cluster energy in keV (default 1000 = 1 MeV).
+
+    Returns:
+        (kept, total) cluster counts.
+    """
+    frame_re_local = re.compile(r'^Frame\s+\d+\s+\(')
+    bracket_re_local = re.compile(r'\[([^\]]+)\]')
+
+    kept = total = 0
+    with open(input_path, 'rb') as fin, open(output_path, 'wb') as fout:
+        for raw in fin:
+            line = raw.decode('utf-8', errors='replace').strip()
+            if not line or frame_re_local.match(line):
+                fout.write(raw)
+                continue
+            groups = bracket_re_local.findall(line)
+            if not groups:
+                fout.write(raw)
+                continue
+            total += 1
+            total_e = 0.0
+            for g in groups:
+                parts = [p.strip() for p in g.split(',')]
+                if len(parts) >= 3:
+                    try:
+                        total_e += float(parts[2])
+                    except ValueError:
+                        pass
+            if total_e >= min_energy_keV:
+                fout.write(raw)
+                kept += 1
+
+    print(f"filter_clog_by_energy: kept {kept}/{total} clusters (>= {min_energy_keV} keV)")
+    return kept, total
+
+
 def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=False, border_values=(1, 256)):
     """
     Convert a clog file from the Pixet software (Advacam) to a DataFrame of pixel clusters.
@@ -178,23 +221,3 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
         })
 
     return pd.DataFrame(events, columns=[PIX_X_ID, PIX_Y_ID, ENERGY_keV, TOA, SIZE, DELTA_TOA])
-
-
-def clog2pixelHits(file_path, npix, max_lines=None, max_bytes=None):
-    """
-    Convert a clog file to a DataFrame of individual pixel hits, each tagged with a cluster_id.
-    Columns: PixelID (int16), Energy (keV), ToA (ns), cluster_id
-    """
-    rows = []
-    cluster_id = 0
-
-    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
-        t_offset = frame_time if frame_time is not None else 0.0
-        for x, y, e, t in hits:
-            rows.append({
-                PIXEL_ID: get_pixID(int(x), int(y), npix), ENERGY_keV: e,
-                TOA: t_offset + t, 'cluster_id': cluster_id,
-            })
-        cluster_id += 1
-
-    return pd.DataFrame(rows, columns=[PIXEL_ID, ENERGY_keV, TOA, 'cluster_id'])
