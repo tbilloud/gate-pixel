@@ -383,16 +383,31 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
     plt.show()
 
 
-def plot_cluster_viewer(pixel_hits, npix, min_size=60):
+def plot_cluster_viewer(pixel_hits, npix, min_size=60, tag_types=False, **tag_kwargs):
     """
     Interactive 2D cluster viewer for pixelHits tagged with cluster ids.
     Each cluster is shown as a 2D heatmap of pixel energies with Prev/Next navigation.
 
     Args:
-        pixel_hits (pd.DataFrame): Pixel hits with columns PixelID (int16), Energy (keV), and cluster_id.
+        pixel_hits (pd.DataFrame | str | Path): Pixel hits DataFrame with columns
+            PixelID (int16), Energy (keV), and cluster_id — **or** a path to a
+            .clog file which will be loaded automatically via clog2pixelHits().
         npix (int): Number of pixels per row/column (used to convert PixelID to X, Y).
         min_size (int): Minimum cluster size to display.
+        tag_types (bool): If True and the DataFrame has no ``'type'`` column,
+            automatically run :func:`~tools.pixelHitsTagged.tag_cluster_types`
+            to classify clusters before displaying.  Extra keyword arguments
+            (e.g. ``ion_core_keV=200``) are forwarded to that function.
     """
+    import pathlib
+    if isinstance(pixel_hits, (str, pathlib.Path)):
+        from tools.pixelHitsTagged import clog2pixelHitsTagged
+        pixel_hits = clog2pixelHitsTagged(str(pixel_hits), npix)
+
+    if tag_types and 'type' not in pixel_hits.columns:
+        from tools.pixelHitsTagged import tag_cluster_types
+        pixel_hits = tag_cluster_types(pixel_hits, npix, **tag_kwargs)
+
     if 'cluster_id' not in pixel_hits.columns:
         raise ValueError("pixel_hits must contain a 'cluster_id' column. "
                          "Use clog2pixelHits() or add cluster_id to your DataFrame.")
@@ -436,10 +451,20 @@ def plot_cluster_viewer(pixel_hits, npix, min_size=60):
         for x, y, e in zip(xs, ys, es):
             grid[y - y0, x - x0] = e
         im = ax_img.imshow(grid, origin='lower', extent=(x0 - .5, x1 + .5, y0 - .5, y1 + .5),
-                           aspect='equal', cmap='hot')
+                           aspect='equal')
         row = big_meta.iloc[idx]
-        ax_img.set_title(f"Cluster {idx + 1}/{len(big_groups)}  —  "
-                         f"size={int(row[SIZE])}, E={row[ENERGY_keV]:.1f} keV")
+        type_str = ''
+        if 'type' in grp.columns:
+            ctype = grp['type'].iloc[0]
+            type_colors = {'ion': 'orangered', 'e-': 'royalblue', 'cosmic': 'limegreen', 'other': 'gray'}
+            color = type_colors.get(ctype, 'black')
+            type_str = f'  [{ctype}]'
+            ax_img.set_title(f"Cluster {idx + 1}/{len(big_groups)}  —  "
+                             f"size={int(row[SIZE])}, E={row[ENERGY_keV]:.1f} keV"
+                             f"{type_str}", color=color)
+        else:
+            ax_img.set_title(f"Cluster {idx + 1}/{len(big_groups)}  —  "
+                             f"size={int(row[SIZE])}, E={row[ENERGY_keV]:.1f} keV")
         ax_img.set_xlabel('Pixel X')
         ax_img.set_ylabel('Pixel Y')
         fig.colorbar(im, cax=ax_cbar, label='Energy (keV)')
