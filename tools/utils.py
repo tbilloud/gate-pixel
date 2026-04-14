@@ -170,40 +170,45 @@ def filter_clog_by_energy(input_path, output_path, min_energy_keV=0.0, max_energ
     Returns:
         (kept, total) cluster counts.
     """
-    # Byte-level regex to avoid decoding every line
+    t0 = time.time()
     frame_re_b = re.compile(rb'^Frame\s+\d+\s+\(')
     bracket_re_b = re.compile(rb'\[([^\]]+)\]')
 
     kept = total = 0
+    pending_frame = None
+    wrote_any = False
+
     with open(input_path, 'rb') as fin, open(output_path, 'wb') as fout:
         for lineno, raw in enumerate(fin, start=1):
-            # Pass through empty lines and frame headers unchanged
             stripped = raw.strip()
-            if not stripped or frame_re_b.match(stripped):
-                fout.write(raw)
+            if not stripped:
                 continue
-
-            # Find all bracketed hit groups: [x, y, e, t]
+            if frame_re_b.match(stripped):
+                pending_frame = raw
+                continue
             groups = bracket_re_b.findall(stripped)
             if not groups:
-                fout.write(raw)
                 continue
 
-            # Sum pixel-hit energies (3rd field of each group)
             total += 1
             total_e = 0.0
             for g in groups:
                 parts = g.split(b',')
                 if len(parts) != 4:
-                    print(f"filter_clog_by_energy: malformed hit on line {lineno} — aborting")
+                    print(f"filter_clog_by_energy: malformed hit on line {lineno}")
                     return kept, total
                 total_e += float(parts[2])
 
-            # Write the cluster line only if it falls within the energy window
             if min_energy_keV <= total_e <= max_energy_keV:
+                if pending_frame is not None:
+                    if wrote_any:
+                        fout.write(b'\n')
+                    fout.write(pending_frame)
+                    pending_frame = None
+                    wrote_any = True
                 fout.write(raw)
                 kept += 1
 
     print(f"filter_clog_by_energy: kept {kept}/{total} clusters "
-          f"({min_energy_keV}–{max_energy_keV} keV)")
+          f"({min_energy_keV}\u2013{max_energy_keV} keV) in {time.time() - t0:.2f}s")
     return kept, total
