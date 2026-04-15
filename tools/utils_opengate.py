@@ -40,53 +40,6 @@ def setup_hits(sim, sensor_name, output_filename='gateHits.root'):
     hits.output_filename = output_filename
     return hits
 
-
-def theta_phi(sensor, source, sim = None, extra_spread=1):
-    """
-    Computes the emission angles of a source so that it focuses on the sensor.
-    This speeds up the simulation.
-    Only works in some cases:
-    - if the source and sensor are not attached to a mother volume AND they have the
-      same x,y coordinates -> leave the 'sim' parameter to None.
-    - if the source or sensor is attached to a mother volume:
-        Set the 'sim' parameter to the simulate object (so that global coordinates can be calculated).
-        => WARNING This case has not been thoroughly validated. TODO
-
-    Returns:
-        A pair of theta,phi ranges that can be given directly to the simulation:
-        source.direction.theta, source.direction.phi = theta_phi(sensor,source)
-    """
-
-    if not sim:
-        # If the source and sensor are not attached to a mother volume
-        # Only works if source and sensor have same x,y coordinates
-        sensor_position = np.array(sensor.translation)
-        source_position = np.array(source.position.translation)
-        sensor_size = np.max(sensor.size[0:1])
-        distance = np.linalg.norm(sensor_position - source_position) - sensor.size[
-            2] / 2
-        phi_deg = 180 - np.degrees(np.arctan(sensor_size / (2 * distance)))
-        return [phi_deg * deg, 180 * deg], [0, 360 * deg]
-    else:
-        # If the source or sensor is attached to a mother volume
-        sensor_position = np.array(get_global_translation(sensor))
-        source_position = np.array(get_global_translation(sim.volume_manager.get_volume(source.attached_to)) if sim else source.position.translation)
-        sensor_size = np.max(sensor.size[0:2])  # Use max of x/y size for coverage
-        direction = source_position - sensor_position  # Focus from source to sensor
-        distance = np.linalg.norm(direction)
-        if distance == 0:
-            raise ValueError("Sensor and source positions are identical.")
-
-        theta = np.degrees(np.arccos(direction[2] / distance))
-        phi = np.degrees(np.arctan2(direction[1], direction[0]))
-
-        half_size = sensor_size / 2
-        spread = np.degrees(np.arctan(half_size / distance)) * extra_spread
-
-        theta_range = [max(0, theta - spread) * deg, min(180, theta + spread) * deg]
-        phi_range = [((phi - spread) % 360) * deg, ((phi + spread) % 360) * deg]
-        return theta_range, phi_range
-
 def set_fluorescence(sim):
     sim.physics_manager.global_production_cuts.gamma = 1 * um
     sim.physics_manager.global_production_cuts.electron = 100 * um

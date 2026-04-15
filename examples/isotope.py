@@ -2,9 +2,6 @@
 # - an ideal detector (with function gHits2cones_byEvtID)
 # - a Timepix detector (with Allpix and hits/cluster processing)
 
-# WARNING:
-# source.direction.acceptance_angle and theta_phi() modify activity with ion sources!
-
 import json
 
 from opengate import g4_units

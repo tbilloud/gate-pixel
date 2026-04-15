@@ -128,36 +128,6 @@ Here shutil is used to copy the main script to the output directory, which is us
 later analysis.
 Indeed, the opengate Simulation() object is need for some offline analysis functions.
 
-## utils_opengate.theta_phi()
-
-In case of an isotropic source, calculate the theta/phi angles that just fits the sensor
-area, to avoid shooting particles everywhere in space. This saves time.
-WARNING: DO NOT USE THIS IF USING source.activity = .. * Bq
-It is similar to using the acceptance angle, e.g.:
-
-```
-source.direction.acceptance_angle.volumes = ["sensor"]
-source.direction.acceptance_angle.intersection_flag = True
-```
-
-(
-see https://opengate-python.readthedocs.io/en/master/user_guide/user_guide_reference_sources_generic_source.html#acceptance-angle)
-except that it shoots exactly the number of particles set with source.n
-Example usage:
-
-```
-  from tools.utils_opengate import theta_phi
-  
-  ## ============================
-  ## == SOURCE                 ==
-  ## ============================
-  source = sim.add_source("GenericSource", "source")
-  source.n = 100
-  source.particle = "gamma"
-  source.energy.mono = 140 * keV
-  source.position.translation = [0 * mm, 0 * mm, -5 * mm]
-  source.direction.theta, source.direction.phi = theta_phi(sensor, source)
-```
 
 ## utils_opengate.get_global_translation()
 
