@@ -31,7 +31,8 @@ def global2localFractionalCoordinates(g, sensor, npix):
     a, b, g = np.array(a), np.array(b), np.array(g)
 
     bc = -a + g
-    bc = np.dot(sensor.rotation.T, bc) / [pitch, pitch, sensor.size[2]]
+    bc = np.dot(sensor.rotation.T, bc) # rotate first
+    bc = bc / [pitch, pitch, sensor.size[2]] # then scale (inverse of localFractional2globalCoordinates)
 
     c = bc - b
 
@@ -76,7 +77,8 @@ def localFractional2globalCoordinates(c, translation, rotation, npix, pitch, thi
     a, b, c = np.array(a), np.array(b), np.array(c)
 
     bc = b + c
-    bc = np.dot(rotation, bc) * [pitch, pitch, thickness]
+    bc = bc * [pitch, pitch, thickness] # scale first
+    bc = np.dot(rotation, bc) # then rotate (inverse of global2localFractionalCoordinates)
 
     g = a + bc
 
