@@ -15,7 +15,7 @@ import opengate_core
 from opengate.utility import g4_units
 from opengate.geometry.volumes import RepeatParametrisedVolume
 
-from tools.utils import metric_num
+import humanize
 from tools.logging_custom import global_log
 
 um, mm, keV, MeV, deg, Bq, ns, sec = g4_units.um, g4_units.mm, g4_units.keV, g4_units.MeV, g4_units.deg, g4_units.Bq, g4_units.ns, g4_units.s
@@ -368,8 +368,8 @@ def run_multi(sim, hit_actor_name=None, stat_actor_name=None):
     global_log.info(f"{'-' * 80}\nSimulation: START")
     hits_file = sim.output_dir / hit_actor_name.output_filename
     stat_file = sim.output_dir / stat_actor.output_filename
-    nhits = metric_num(len(uproot.open(hits_file)['Hits'].arrays(library='pd')))
-    nev = metric_num(json.load(open(stat_file))['events']['value'])
+    nhits = humanize.metric(len(uproot.open(hits_file)['Hits'].arrays(library='pd')))
+    nev = humanize.metric(json.load(open(stat_file))['events']['value'])
     tm = round(time.time() - start_time)
     global_log.info(f"Simulation: {nev} events, {nhits} hits\nSimulation: STOP. Time: {tm} seconds.\n{'-' * 80}")
     shutil.copy2(os.path.abspath(sys.argv[0]), sim.output_dir)

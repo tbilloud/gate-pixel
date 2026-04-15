@@ -104,18 +104,6 @@ def charge_speed_mm_ns(mobility_cm2_Vs, bias_V, thick_mm):
     return elec_speed * 1e-8  # [mm/ns]
 
 
-def metric_num(n, decimals=0):
-    abs_n = abs(n)
-    if abs_n >= 1_000_000_000_000:
-        return f"{n / 1_000_000_000_000:.{decimals}f}T"
-    elif abs_n >= 1_000_000_000:
-        return f"{n / 1_000_000_000:.{decimals}f}B"
-    elif abs_n >= 1_000_000:
-        return f"{n / 1_000_000:.{decimals}f}M"
-    elif abs_n >= 1_000:
-        return f"{n / 1_000:.{decimals}f}K"
-    else:
-        return str(n)
 
 
 def log_offline_process(object_name, input_type):

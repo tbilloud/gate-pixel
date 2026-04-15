@@ -4,10 +4,11 @@
 
 import json
 
+import humanize
 from opengate import g4_units
 from opengate.utility import g4_units
 from tools.allpix import *
-from tools.utils import metric_num, charge_speed_mm_ns
+from tools.utils import charge_speed_mm_ns
 from tools.utils_opengate import get_isotope_data
 from tools.reconstruction import valid_psource
 from tools.utils_plot import plot_energies
@@ -51,7 +52,7 @@ if __name__ == "__main__":
     ghits_df = uproot.open(ghits_file)[hits.name].arrays(library='pd')
     nevents = json.load(open(sim.output_dir / 'gateStats.txt'))['events']['value']
     global_log.info(
-        f"{metric_num(nevents)} events, {metric_num(len(ghits_df))} hits\n{'-' * 80}")
+        f"{humanize.metric(nevents)} events, {humanize.metric(len(ghits_df))} hits\n{'-' * 80}")
 
     # ############################### REFERENCE  #######################################
 

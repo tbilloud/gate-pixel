@@ -7,7 +7,7 @@ from tools.reconstruction import reconstruct
 from tools.utils_plot import plot_reco
 from opengate.utility import g4_units
 from tools.allpix import *
-from tools.utils import metric_num
+import humanize
 import concurrent.futures
 
 mm, keV, Bq = g4_units.mm, g4_units.keV, g4_units.Bq
@@ -53,7 +53,7 @@ def run_sim(output, material='G4_CADMIUM_TELLURIDE', thick_mm=1, source_keV=200,
     ## == FILE NAMES + RUN       ==
     ## ============================
     sim.output_dir = sim.output_dir / f'{source_keV}keV' / f'{sim.physics_manager.physics_list_name}'
-    info = [f'{sensor.material[3:]}_{round(thick)}mm', f'{source_keV}keV', f'{translation}', metric_num(n)]
+    info = [f'{sensor.material[3:]}_{round(thick)}mm', f'{source_keV}keV', f'{translation}', humanize.metric(n)]
     fname = '_'.join(info) + '.root'
     hits.output_filename = hits.name + '_' + fname
     sim.run(start_new_process=True)
@@ -98,6 +98,6 @@ if __name__ == "__main__":
         vols = [np.asarray(f.result()) for f in futures]
 
     vol = np.add.reduce(vols)
-    out_file = Path(params['output']) / f"vol_multi_{metric_num(params['n'])}.npy"
+    out_file = Path(params['output']) / f"vol_multi_{humanize.metric(params['n'])}.npy"
     np.save(out_file, vol)
     plot_reco(vol, vpitch=0.1)

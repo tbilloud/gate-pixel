@@ -3,7 +3,7 @@ from opengate.actors.digitizers import ProcessDefinedStepInVolumeAttribute
 from opengate.managers import Simulation
 from scipy.spatial.transform import Rotation
 from tools.CCevents import gHits2CCevents_0edep
-from tools.utils import metric_num
+import humanize
 from tools.utils_opengate import setup_pixels
 from opengate.utility import g4_units
 from tools.allpix import *
@@ -115,7 +115,7 @@ if __name__ == "__main__":
         df = pd.DataFrame(rows).sort_values(["rotation_deg", "energy_kev", "asic_mm"])
         df = df.reset_index(drop=True)
         n = sim.source_manager.get_source("source").n
-        df.to_csv(f"output_{metric_num(n)}.csv", index=False)
+        df.to_csv(f"output_{humanize.metric(n)}.csv", index=False)
     # PLOT FROM STORED
     else:
         file_name = 'output_1M'

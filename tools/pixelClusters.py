@@ -2,8 +2,11 @@
 # Easy to read, but not performant. See pixelClusters_custom.py for faster clustering.
 # Time of pixelHits2pixelClusters() is not linear with number of hits (e.g. 100k 200 sec, 1M 13000 sec on my machine)
 
+import os
+import humanize
 import pandas as pd
 from tools.utils import get_pixID_2D, log_offline_process
+from tools.logging_custom import global_log
 from tools.pixelHits import PIXEL_ID, TOA, ENERGY_keV, EVENTID
 import re
 
@@ -162,6 +165,9 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
     chunks = []
     events = []
 
+    file_size = os.path.getsize(file_path)
+    global_log.info(f"clog2pixelClusters: reading {file_path} ({humanize.naturalsize(file_size)})")
+
     for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
         total_e = sum(h[2] for h in hits)
         if total_e == 0:
@@ -190,4 +196,7 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
     if not chunks:
         return pd.DataFrame(columns=columns)
 
-    return pd.concat(chunks, ignore_index=True)
+    df = pd.concat(chunks, ignore_index=True)
+    df_size = df.memory_usage(deep=True).sum()
+    global_log.info(f"clog2pixelClusters: {humanize.metric(len(df))} clusters ({humanize.naturalsize(df_size)})")
+    return df
