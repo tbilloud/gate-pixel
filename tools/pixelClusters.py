@@ -95,10 +95,12 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
     """
     Core clog parser. Yields (hits, frame_time) for each cluster line, where
     hits is a list of (x, y, energy, toa) tuples.
+
+    Works on raw bytes to avoid the overhead of decoding every line.
     """
     frame_time = None
-    frame_re = re.compile(r'^Frame\s+\d+\s+\(\s*([^,]+)\s*,')
-    bracket_re = re.compile(r'\[([^\]]+)\]')
+    frame_re = re.compile(rb'^Frame\s+\d+\s+\(\s*([^,]+)\s*,')
+    bracket_re = re.compile(rb'\[([^\]]+)\]')
 
     if max_bytes is not None:
         max_bytes = int(max_bytes)
@@ -113,11 +115,11 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
             if max_bytes is not None and bytes_read > max_bytes:
                 break
 
-            line = raw.decode('utf-8', errors='replace').strip()
-            if not line:
+            stripped = raw.strip()
+            if not stripped:
                 continue
 
-            m = frame_re.match(line)
+            m = frame_re.match(stripped)
             if m:
                 try:
                     frame_time = float(m.group(1))
@@ -125,13 +127,13 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
                     frame_time = 0.0
                 continue
 
-            groups = bracket_re.findall(line)
+            groups = bracket_re.findall(stripped)
             if not groups:
                 continue
 
             hits = []
             for g in groups:
-                parts = [p.strip() for p in g.split(',')]
+                parts = g.split(b',')
                 if len(parts) < 4:
                     continue
                 try:
@@ -147,13 +149,18 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
                 yield hits, frame_time
 
 
-def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=False, border_values=(1, 256)):
+def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=False, border_values=(1, 256),
+                       chunk_size=100_000):
     """
     Convert a clog file from the Pixet software (Advacam) to a DataFrame of pixel clusters.
     See: https://wiki.advacam.cz/index.php/PIXet
+
+    Processes the file in chunks to keep memory usage bounded for large files.
     """
-    events = []
+    columns = [PIX_X_ID, PIX_Y_ID, ENERGY_keV, TOA, SIZE, DELTA_TOA]
     border_set = set(border_values)
+    chunks = []
+    events = []
 
     for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
         total_e = sum(h[2] for h in hits)
@@ -171,9 +178,16 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
         size = len(hits)
         delta_toa = max(h[3] for h in hits) - min(h[3] for h in hits) if size > 1 else float('nan')
 
-        events.append({
-            PIX_X_ID: x_w, PIX_Y_ID: y_w, ENERGY_keV: total_e,
-            TOA: toa, SIZE: size, DELTA_TOA: delta_toa,
-        })
+        events.append((x_w, y_w, total_e, toa, size, delta_toa))
 
-    return pd.DataFrame(events, columns=[PIX_X_ID, PIX_Y_ID, ENERGY_keV, TOA, SIZE, DELTA_TOA])
+        if len(events) >= chunk_size:
+            chunks.append(pd.DataFrame(events, columns=columns))
+            events = []
+
+    if events:
+        chunks.append(pd.DataFrame(events, columns=columns))
+
+    if not chunks:
+        return pd.DataFrame(columns=columns)
+
+    return pd.concat(chunks, ignore_index=True)
