@@ -195,7 +195,7 @@ file_name = "{gHits}"
 tree_name = "Hits"
 detector_name_chars = 3
 require_sequential_events = {'false' if skip_hitless_events else 'true'} # avoids storing events w/o hits, but looses event IDs
-branch_names = ["EventID", "TotalEnergyDeposit", "GlobalTime", "Position_X", "Position_Y", "Position_Z", "HitUniqueVolumeID", "PDGCode", "TrackID", "ParentID"]
+branch_names = ["EventID", "TotalEnergyDeposit", "GlobalTime", "Position_X", "Position_Y", "Position_Z", "PostStepUniqueVolumeID", "PDGCode", "TrackID", "ParentID"]
 {configurations[config]}
 [TextWriter]
 include = "PixelHit"
