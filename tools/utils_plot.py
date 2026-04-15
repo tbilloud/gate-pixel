@@ -284,7 +284,8 @@ def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
             ha='center', va='top', clip_on=False)
 
 
-def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6), log_x=False, log_y=False, title=None):
+def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6), log_x=False,
+                        log_y=False, title=None, split_by_parent=False, top_n=None):
     """
     Plot spectra of decay products from an isotope source that hit the sensor.
 
@@ -323,25 +324,31 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
         hist_range_keV: range for histogram
         figsize: figure size
         log_x: if True, plot x-axis in log scale
+        log_y: if True, plot y-axis in log scale
+        title: plot title
+        split_by_parent: if True, overlay one histogram per ParentParticleName on the same plot
+        top_n: if set (int) and split_by_parent is True, only show the N parents with the most entries
     """
 
     # build mask with NumPy arrays to avoid awkward-pandas issues
     mask = (df_hits['TrackCreatorProcess'].to_numpy() == 'RadioactiveDecay') & \
-           (df_hits['KineticEnergy'].to_numpy() > (min_keV/1000)) & \
-           (df_hits['KineticEnergy'].to_numpy() < (max_keV/1000))
+           (df_hits['KineticEnergy'].to_numpy() > (min_keV / 1000)) & \
+           (df_hits['KineticEnergy'].to_numpy() < (max_keV / 1000))
 
     cols = ['EventID', 'TrackID', 'ParticleName', 'KineticEnergy']
-    df_r = df_hits.loc[mask, cols].copy()
-    if df_r.empty:
+    if split_by_parent:
+        cols.append('ParentParticleName')
+    df_primaries = df_hits.loc[mask, cols].copy()
+    if df_primaries.empty:
         print("No RadioactiveDecay tracks with KineticEnergy > 0 found.")
         return
 
     # ensure numeric float array for KineticEnergy
-    df_r['KineticEnergy'] = df_r['KineticEnergy'].to_numpy().astype(float)
+    df_primaries['KineticEnergy'] = df_primaries['KineticEnergy'].to_numpy().astype(float)
 
     # for each track take the step with the highest kinetic energy
-    idx = df_r.groupby(['EventID', 'TrackID'])['KineticEnergy'].idxmax()
-    df_first = df_r.loc[idx].reset_index(drop=True)
+    idx = df_primaries.groupby(['EventID', 'TrackID'])['KineticEnergy'].idxmax()
+    df_first = df_primaries.loc[idx].reset_index(drop=True)
     df_first['KineticEnergy'] = df_first['KineticEnergy'].mul(1000)
 
     # prepare bins / range
@@ -350,31 +357,33 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
         hist_range_keV = (max(0.0, ke_min * 0.9), ke_max * 1.1)
     bin_edges = np.linspace(hist_range_keV[0], hist_range_keV[1], bins + 1)
 
-    # plot overall histogram (filled, faint)
     plt.figure(figsize=figsize)
-    plt.hist(df_first['KineticEnergy'].to_numpy(), bins=bin_edges,
-             histtype='stepfilled', alpha=0.18, label='all particles')
 
-    # overlay per-ParticleName histograms (e- in red and gamma in green, as in default opengate visualization)
-    for pname, grp in df_first.groupby('ParticleName'):
-        data = grp['KineticEnergy'].to_numpy()
-        if data.size == 0:
-            continue
-        color = None
-        if pname == 'e-':
-            color = 'red'
-        elif pname == 'gamma':
-            color = 'green'
-        plt.hist(data, bins=bin_edges, histtype='step', linewidth=1.5, label=str(pname), color=color)
-
-    if log_x:
-        plt.xscale('log')
-    if log_y:
-        plt.yscale('log')
-    if title:
-        plt.title(title)
+    if not split_by_parent:
+        # ── group by ParticleName (original behaviour) ──
+        plt.hist(df_first['KineticEnergy'].to_numpy(), bins=bin_edges,
+                 histtype='stepfilled', alpha=0.18, label='all particles')
+        for pname, grp in df_first.groupby('ParticleName'):
+            data = grp['KineticEnergy'].to_numpy()
+            if data.size == 0:
+                continue
+            color = 'red' if pname == 'e-' else ('green' if pname == 'gamma' else None)
+            plt.hist(data, bins=bin_edges, histtype='step', linewidth=1.5, label=str(pname), color=color)
     else:
-        plt.title('Kinetic energy of particles emitted by the source')
+        # ── one histogram per ParentParticleName, overlaid ──
+        counts = df_first['ParentParticleName'].value_counts()  # sorted descending
+        if top_n is not None:
+            counts = counts.head(top_n)
+        for parent, n in counts.items():
+            data = df_first.loc[df_first['ParentParticleName'] == parent, 'KineticEnergy'].to_numpy()
+            if data.size == 0:
+                continue
+            plt.hist(data, bins=bin_edges, histtype='step', linewidth=1.5,
+                     label=f'{parent} (n={n})')
+
+    if log_x: plt.xscale('log')
+    if log_y: plt.yscale('log')
+    plt.title(title or 'Kinetic energy of particles emitted by the source')
     plt.xlim(hist_range_keV[0], hist_range_keV[1])
     plt.xlabel('Energy (keV)')
     plt.ylabel('Counts')
@@ -522,7 +531,7 @@ def plot_energy_hist_by_time(df, interval_ns, bins=100, x_range=None, max_plots=
         mask = (idx == i)
         if not np.any(mask):
             continue
-        interval_plots.append((i, edges[i], edges[i+1], energies[mask]))
+        interval_plots.append((i, edges[i], edges[i + 1], energies[mask]))
 
     if not interval_plots:
         raise ValueError("No events found in any interval")
@@ -532,13 +541,13 @@ def plot_energy_hist_by_time(df, interval_ns, bins=100, x_range=None, max_plots=
     nplots = len(interval_plots)
     nrows = math.ceil(nplots / ncols)
 
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4*ncols, 3*nrows), squeeze=False)
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False)
     axes_flat = axes.flatten()
 
     cmap_vals = cmap(np.linspace(0, 1, nplots))
     for ax, (k, t0, t1, ev) in zip(axes_flat, interval_plots):
         ax.hist(ev, bins=bins, range=x_range, color=cmap_vals[k % len(cmap_vals)], edgecolor='k', alpha=0.8)
-        ax.set_title(f"t ∈ [{t0/1e9:.1f}, {t1/1e9:.1f}) s\nN={len(ev)}")
+        ax.set_title(f"t ∈ [{t0 / 1e9:.1f}, {t1 / 1e9:.1f}) s\nN={len(ev)}")
         ax.set_xlabel('Energy (keV)')
         ax.set_ylabel('Counts')
         ax.grid(axis='y', linestyle='--', alpha=0.4)
