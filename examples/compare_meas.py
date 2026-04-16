@@ -10,7 +10,8 @@ from pandas import read_csv
 from tools.CCevents import local2global, pixelClusters2CCevents, gHits2CCevents
 from tools.allpix import gHits2allpix2pixelHits
 from tools.utils import charge_speed_mm_ns, get_pixID_2D
-from tools.pixelHits import ENERGY_keV, remove_edge_pixels, pixet2pixelHit
+from tools.pixelHits import ENERGY_keV, remove_edge_pixels
+from tools.utils_pixet import t3pa2pixelHits
 from tools.pixelClusters_custom import pixelHits2pixelClusters
 from tools.reconstruction import valid_psource, reconstruct
 from tools.utils_opengate import setup_pixels, setup_hits, set_fluorescence
@@ -66,7 +67,7 @@ def run(sensor_translation, time_sec, meas_file):
                                       charge_per_step=100,
                                       )
     hit_allp.to_csv(sim.output_dir / (Path(meas_file).stem + "_pixelHits.root"), index=False)
-    hit_meas = pixet2pixelHit(path / meas_file, path.parent / 'CALIBRATION', nrows=len(hit_allp))
+    hit_meas = t3pa2pixelHits(path / meas_file, path.parent / 'CALIBRATION', nrows=len(hit_allp))
 
     # TOA CUTS
     hit_allp = hit_allp[hit_allp['ToA (ns)'] <= 2.1e10]  # outliers in Gate global time

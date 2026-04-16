@@ -2,13 +2,9 @@
 # Easy to read, but not performant. See pixelClusters_custom.py for faster clustering.
 # Time of pixelHits2pixelClusters() is not linear with number of hits (e.g. 100k 200 sec, 1M 13000 sec on my machine)
 
-import os
-import humanize
 import pandas as pd
 from tools.utils import get_pixID_2D, log_offline_process
-from tools.logging_custom import global_log
 from tools.pixelHits import PIXEL_ID, TOA, ENERGY_keV, EVENTID
-import re
 
 # Pixel cluster format definition
 PIX_X_ID = 'X'  # pixel X index (starts from 0, bottom left)
@@ -94,109 +90,3 @@ def pixelHits2pixelClusters(pixelHits, npix, window_ns):
     return df
 
 
-def _parse_clog(file_path, max_lines=None, max_bytes=None):
-    """
-    Core clog parser. Yields (hits, frame_time) for each cluster line, where
-    hits is a list of (x, y, energy, toa) tuples.
-
-    Works on raw bytes to avoid the overhead of decoding every line.
-    """
-    frame_time = None
-    frame_re = re.compile(rb'^Frame\s+\d+\s+\(\s*([^,]+)\s*,')
-    bracket_re = re.compile(rb'\[([^\]]+)\]')
-
-    if max_bytes is not None:
-        max_bytes = int(max_bytes)
-
-    bytes_read = 0
-
-    with open(file_path, 'rb') as f:
-        for lineno, raw in enumerate(f, start=1):
-            bytes_read += len(raw)
-            if max_lines is not None and lineno > max_lines:
-                break
-            if max_bytes is not None and bytes_read > max_bytes:
-                break
-
-            stripped = raw.strip()
-            if not stripped:
-                continue
-
-            m = frame_re.match(stripped)
-            if m:
-                try:
-                    frame_time = float(m.group(1))
-                except ValueError:
-                    frame_time = 0.0
-                continue
-
-            groups = bracket_re.findall(stripped)
-            if not groups:
-                continue
-
-            hits = []
-            for g in groups:
-                parts = g.split(b',')
-                if len(parts) < 4:
-                    continue
-                try:
-                    x = float(parts[0])
-                    y = float(parts[1])
-                    e = float(parts[2])
-                    t = float(parts[3])
-                except ValueError:
-                    continue
-                hits.append((x, y, e, t))
-
-            if hits:
-                yield hits, frame_time
-
-
-def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=False, border_values=(1, 256),
-                       chunk_size=100_000):
-    """
-    Convert a clog file from the Pixet software (Advacam) to a DataFrame of pixel clusters.
-    See: https://wiki.advacam.cz/index.php/PIXet
-
-    Processes the file in chunks to keep memory usage bounded for large files.
-    """
-    columns = [PIX_X_ID, PIX_Y_ID, ENERGY_keV, TOA, SIZE, DELTA_TOA]
-    border_set = set(border_values)
-    chunks = []
-    events = []
-
-    file_size = os.path.getsize(file_path)
-    global_log.info(f"clog2pixelClusters: reading {file_path} ({humanize.naturalsize(file_size)})")
-
-    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
-        total_e = sum(h[2] for h in hits)
-        if total_e == 0:
-            x_w = sum(h[0] for h in hits) / len(hits)
-            y_w = sum(h[1] for h in hits) / len(hits)
-        else:
-            x_w = sum(h[0] * h[2] for h in hits) / total_e
-            y_w = sum(h[1] * h[2] for h in hits) / total_e
-
-        if omit_border and (int(round(x_w)) in border_set or int(round(y_w)) in border_set):
-            continue
-
-        toa = (frame_time if frame_time is not None else 0.0) + min(h[3] for h in hits)
-        size = len(hits)
-        delta_toa = max(h[3] for h in hits) - min(h[3] for h in hits) if size > 1 else float('nan')
-
-        events.append((x_w, y_w, total_e, toa, size, delta_toa))
-
-        if len(events) >= chunk_size:
-            chunks.append(pd.DataFrame(events, columns=columns))
-            events = []
-
-    if events:
-        chunks.append(pd.DataFrame(events, columns=columns))
-
-    if not chunks:
-        return pd.DataFrame(columns=columns)
-
-    df = pd.concat(chunks, ignore_index=True)
-    df_size = df.memory_usage(deep=True).sum()
-    global_log.info(f"clog2pixelClusters: {humanize.metric(len(df))} clusters ({humanize.naturalsize(df_size)})")
-    return df

@@ -1,17 +1,11 @@
 # Functions to process pixelHits dataframes
 
-import os
 from pathlib import Path
 import pandas
 import pandas as pd
 import uproot
-import sys
-import xml.etree.ElementTree as ET
-import base64
 import numpy as np
 from tools.utils import get_pixID, get_pixID_2D, log_offline_process
-
-from tools.logging_custom import global_log
 
 # Pixel hit format definition
 PIXEL_ID = 'PixelID (int16)'
@@ -100,81 +94,6 @@ def allpixTxt2pixelHit(text_file, n_pixels=256):
                 })
 
     df = pd.DataFrame(rows, columns=[EVENTID] + pixelHits_columns)
-
-    return df
-
-
-# TODO: check for ToA overflow
-@log_offline_process('pixelHits', input_type='file')
-def pixet2pixelHit(t3pa_file, calib, nrows=None):
-    """
-    Convert pixel hits and calibration from ADVACAM/PIXET to a pixelHit DataFrame.
-
-    calib must be a directory containing the files caliba.txt, calibb.txt, calibc.txt, calibt.txt
-      => In Pixet: Detector Setting -> More Detector Settings -> Chips -> Save
-
-    The measurement must be done with:
-    * Measurement -> Type -> Pixels
-    * Detector Setting -> Mode -> ToA + ToT
-    => This stores a .t3pa and a .t3pa.info file. Only the .t3pa file is needed here.
-    """
-    if not Path(calib).exists():
-        raise FileNotFoundError(f"Calibration directory not found")
-
-    df = pd.read_csv(t3pa_file, sep='\t', index_col='Index', nrows=nrows)
-
-    # ===========================
-    # ==  TIME CALIBRATION     ==
-    # ===========================
-
-    df['ToA (ns)'] = 25 * df['ToA'] - (25 / 16) * df['FToA']
-
-    # ===========================
-    # == ENERGY CALIBRATION    ==
-    # ===========================
-
-    calib_names = ['caliba', 'calibb', 'calibc', 'calibt']
-    calib_dict = {}
-
-    global_log.debug(f"Offline [pixelHits]: Searching {calib} for calib files")
-
-    for name in calib_names:
-        file_path = Path(calib) / f"{name}.txt"
-        if not file_path.is_file():
-            raise FileNotFoundError(f"`{file_path}` not found")
-        arr = np.loadtxt(file_path)
-        if arr.shape != (256, 256):
-            raise ValueError(f"{file_path} does not have shape (256, 256)")
-        calib_dict[name] = arr.flatten()
-
-    def tot_to_energy(tot, a, b, c, t):
-        A = a
-        B = b - tot - a * t
-        C = -t * (b - tot) - c
-        discriminant = B ** 2 - 4 * A * C
-        if discriminant < 0 or A == 0:
-            return np.nan
-        E = (-B + np.sqrt(discriminant)) / (2 * A)
-        return E
-
-    for name in calib_names:
-        global_log.debug(f"Mean of {name}: {np.mean(calib_dict[name])}")
-
-    def compute_energy(row):
-        idx = int(row['Matrix Index'])
-        a = calib_dict['caliba'][idx]
-        b = calib_dict['calibb'][idx]
-        c = calib_dict['calibc'][idx]
-        t = calib_dict['calibt'][idx]
-        return tot_to_energy(row['ToT'], a, b, c, t)
-
-    df['Energy (keV)'] = df.apply(compute_energy, axis=1)
-
-    # ===========================
-    # ==  FORMAT DATAFRAME     ==
-    # ===========================
-    df = df.drop(columns=['ToA', 'ToT', 'FToA', 'Overflow'])
-    df = df.rename(columns={'Matrix Index': 'PixelID (int16)'})
 
     return df
 

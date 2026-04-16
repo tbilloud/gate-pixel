@@ -1,16 +1,12 @@
 # General utility functions
 
 import os
-import sys
 import time
-import importlib.metadata
 from pathlib import Path
 import numpy as np
 import pandas
 from tools.logging_custom import global_log
-import re
-from typing import List
-from scipy.spatial.transform import Rotation
+
 
 def get_pixID(x, y, n_pixels=256):
     return x * n_pixels + y
@@ -146,59 +142,3 @@ def log_offline_process(object_name, input_type):
     return decorator
 
 
-def filter_clog_by_energy(input_path, output_path, min_energy_keV=0.0, max_energy_keV=float('inf')):
-    """
-    Read a clog file and write a new one keeping only clusters whose total
-    pixel-hit energy (sum of all hit energies) is in [min_energy_keV, max_energy_keV].
-
-    Args:
-        input_path:      Path to the source .clog file.
-        output_path:     Path for the filtered output .clog file.
-        min_energy_keV:  Minimum cluster energy in keV (default 0).
-        max_energy_keV:  Maximum cluster energy in keV (default inf).
-
-    Returns:
-        (kept, total) cluster counts.
-    """
-    t0 = time.time()
-    frame_re_b = re.compile(rb'^Frame\s+\d+\s+\(')
-    bracket_re_b = re.compile(rb'\[([^\]]+)\]')
-
-    kept = total = 0
-    pending_frame = None
-    wrote_any = False
-
-    with open(input_path, 'rb') as fin, open(output_path, 'wb') as fout:
-        for lineno, raw in enumerate(fin, start=1):
-            stripped = raw.strip()
-            if not stripped:
-                continue
-            if frame_re_b.match(stripped):
-                pending_frame = raw
-                continue
-            groups = bracket_re_b.findall(stripped)
-            if not groups:
-                continue
-
-            total += 1
-            total_e = 0.0
-            for g in groups:
-                parts = g.split(b',')
-                if len(parts) != 4:
-                    print(f"filter_clog_by_energy: malformed hit on line {lineno}")
-                    return kept, total
-                total_e += float(parts[2])
-
-            if min_energy_keV <= total_e <= max_energy_keV:
-                if pending_frame is not None:
-                    if wrote_any:
-                        fout.write(b'\n')
-                    fout.write(pending_frame)
-                    pending_frame = None
-                    wrote_any = True
-                fout.write(raw)
-                kept += 1
-
-    print(f"filter_clog_by_energy: kept {kept}/{total} clusters "
-          f"({min_energy_keV}\u2013{max_energy_keV} keV) in {time.time() - t0:.2f}s")
-    return kept, total

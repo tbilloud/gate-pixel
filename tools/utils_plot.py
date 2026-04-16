@@ -410,7 +410,7 @@ def plot_cluster_viewer(pixel_hits, npix, min_size=60, tag_types=False, **tag_kw
     """
     import pathlib
     if isinstance(pixel_hits, (str, pathlib.Path)):
-        from tools.pixelHitsTagged import clog2pixelHitsTagged
+        from tools.utils_pixet import clog2pixelHitsTagged
         pixel_hits = clog2pixelHitsTagged(str(pixel_hits), npix)
 
     if tag_types and 'type' not in pixel_hits.columns:
