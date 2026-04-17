@@ -8,7 +8,11 @@ try:
     # loguru's logger.remove() is called by opengate, so there are no sinks.
     # Add one so that messages are actually printed.
     if not global_log._core.handlers:
-        global_log.add(sys.stderr, level="INFO")
+        # With all info:
+        # global_log.add(sys.stderr, level="INFO")
+        # Without info about functions:
+        global_log.add(sys.stderr, level="INFO",
+                       format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>")
 
 except ImportError:
     # opengate 10.0.1 — colorlog / stdlib logging-based
