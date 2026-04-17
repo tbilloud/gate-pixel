@@ -73,6 +73,7 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
                 yield hits, frame_time
 
 
+@log_offline_process('clog2clogEnergyFiltered', input_type='file')
 def clog2clogEnergyFiltered(input_path, output_path, min_energy_keV=0.0, max_energy_keV=float('inf')):
     """
     Read a clog file and write a new one keeping only clusters whose total
@@ -350,3 +351,275 @@ def t3pa2pixelHits(t3pa_file, calib, nrows=None):
     df = df.rename(columns={'Matrix Index': 'PixelID (int16)'})
 
     return df
+
+def find_noisy_pixels(file_path, npix=256, outlier_sigma_counts=None,
+                      outlier_sigma_energy=None, outlier_sigma_toa=None,
+                      max_lines=None, max_bytes=None):
+    """
+    Scan a clog file and return a set of (x, y) pixel coordinates that are noisy:
+      - pixels with negative coordinate/energy/time values
+      - pixels whose hit count, total energy, or median ToA exceeds mean + sigma * std
+
+    At least one of outlier_sigma_counts, outlier_sigma_energy, outlier_sigma_toa
+    should be set, otherwise only negative-value pixels are detected.
+
+    Args:
+        outlier_sigma_counts: Sigma threshold for hit count outliers.
+        outlier_sigma_energy: Sigma threshold for total energy outliers.
+        outlier_sigma_toa:    Sigma threshold for median ToA outliers.
+
+    Returns:
+        set of (x, y) tuples
+    """
+    if outlier_sigma_counts is None and outlier_sigma_energy is None and outlier_sigma_toa is None:
+        global_log.warning("find_noisy_pixels: no outlier_sigma_* set — only negative-value detection active. "
+                           "Set at least one of outlier_sigma_counts, outlier_sigma_energy, outlier_sigma_toa.")
+
+    counts = np.zeros((npix, npix), dtype=np.int64)
+    energy = np.zeros((npix, npix), dtype=np.float64)
+    toa_lists = [[[] for _ in range(npix)] for _ in range(npix)]
+    neg_pixels = set()
+
+    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
+        t_offset = frame_time if frame_time is not None else 0.0
+        for x, y, e, t in hits:
+            xi, yi = int(x), int(y)
+            if x < 0 or y < 0 or e < 0 or t < 0:
+                neg_pixels.add((xi, yi))
+            if 0 <= xi < npix and 0 <= yi < npix:
+                counts[yi, xi] += 1
+                energy[yi, xi] += e
+                toa_lists[yi][xi].append(t_offset + t)
+
+    if neg_pixels:
+        global_log.warning(f"Negative values at {len(neg_pixels)} pixel(s): "
+                           f"{sorted(neg_pixels)[:20]}{'...' if len(neg_pixels) > 20 else ''}")
+
+    median_toa = np.full((npix, npix), np.nan)
+    for yi in range(npix):
+        for xi in range(npix):
+            if toa_lists[yi][xi]:
+                median_toa[yi, xi] = np.median(toa_lists[yi][xi])
+
+    noisy = set(neg_pixels)
+    for name, d, sigma in [('counts', counts, outlier_sigma_counts),
+                            ('energy', energy, outlier_sigma_energy),
+                            ('median_toa', median_toa, outlier_sigma_toa)]:
+        if sigma is None:
+            continue
+        valid = d[np.isfinite(d) & (d > 0)]
+        if valid.size == 0:
+            continue
+        mean, std = valid.mean(), valid.std()
+        threshold = mean + sigma * std
+        outlier_yx = np.argwhere(np.isfinite(d) & (d > threshold))
+        if outlier_yx.size > 0:
+            outlier_pixels = {(int(xi), int(yi)) for yi, xi in outlier_yx}
+            noisy |= outlier_pixels
+            global_log.warning(f"Outliers in {name} (>{sigma}σ, threshold={threshold:.1f}): "
+                               f"{len(outlier_pixels)} pixel(s): "
+                               f"{sorted(outlier_pixels)[:20]}{'...' if len(outlier_pixels) > 20 else ''}")
+
+    global_log.info(f"find_noisy_pixels: {len(noisy)} noisy pixel(s) found")
+    return noisy
+
+
+def load_noisy_pixels_from_file(path):
+    """
+    Load noisy pixel coordinates from a text file.
+    Expected format: one pixel per line, 'x y' or 'x,y' (whitespace or comma separated).
+    Lines starting with '#' are ignored.
+    """
+    noisy = set()
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = re.split(r'[,\s]+', line)
+            if len(parts) >= 2:
+                noisy.add((int(parts[0]), int(parts[1])))
+    global_log.info(f"Loaded {len(noisy)} noisy pixel(s) from {path}")
+    return noisy
+
+
+@log_offline_process('clog2clogNoiseFree', input_type='file')
+def clog2clogNoiseFree(input_path, output_path=None, npix=256, noisy_pixels=None,
+                       noisy_pixels_file=None, outlier_sigma_counts=None,
+                       outlier_sigma_energy=None, outlier_sigma_toa=None):
+    """
+    Read a clog file and write a new one with clusters touching noisy pixels removed.
+
+    Noisy pixels are determined by (combined with union):
+      1. noisy_pixels: a set/list of (x, y) tuples provided directly
+      2. noisy_pixels_file: path to a text file with 'x y' per line
+      3. Auto-detection via find_noisy_pixels() using per-map sigma thresholds
+
+    If none of the above yields any noisy pixels, the file is copied unchanged.
+
+    Args:
+        input_path:           Path to the source .clog file.
+        output_path:          Path for the output file (default: input with '_noisefree' suffix).
+        npix:                 Number of pixels per side (default 256).
+        noisy_pixels:         Set/list of (x,y) tuples to remove.
+        noisy_pixels_file:    Path to a text file listing noisy pixel coordinates.
+        outlier_sigma_counts: Sigma threshold for hit count outliers (default None).
+        outlier_sigma_energy: Sigma threshold for total energy outliers (default None).
+        outlier_sigma_toa:    Sigma threshold for median ToA outliers (default None).
+                              Set at least one to enable auto-detection.
+
+    Returns:
+        (kept, total) cluster counts.
+    """
+    if output_path is None:
+        base, ext = os.path.splitext(input_path)
+        output_path = f"{base}_noisefree{ext}"
+
+    # Build the noisy pixel set
+    bad = set()
+    if noisy_pixels is not None:
+        bad |= set(noisy_pixels)
+        global_log.info(f"User-provided noisy pixels: {len(noisy_pixels)}")
+    if noisy_pixels_file is not None:
+        bad |= load_noisy_pixels_from_file(noisy_pixels_file)
+    if outlier_sigma_counts is not None or outlier_sigma_energy is not None or outlier_sigma_toa is not None:
+        bad |= find_noisy_pixels(input_path, npix=npix,
+                                 outlier_sigma_counts=outlier_sigma_counts or float('inf'),
+                                 outlier_sigma_energy=outlier_sigma_energy or float('inf'),
+                                 outlier_sigma_toa=outlier_sigma_toa or float('inf'))
+
+    if not bad:
+        global_log.info("No noisy pixels found, nothing to filter.")
+        import shutil
+        shutil.copy2(input_path, output_path)
+        return 0, 0
+
+    global_log.info(f"Filtering {len(bad)} noisy pixel(s): {sorted(bad)[:20]}{'...' if len(bad) > 20 else ''}")
+
+    # Stream-filter
+    frame_re = re.compile(rb'^Frame\s+\d+\s+\(')
+    bracket_re = re.compile(rb'\[([^\]]+)\]')
+    kept = total = 0
+    pending_frame = None
+    wrote_any = False
+    in_size = os.path.getsize(input_path)
+
+    with open(input_path, 'rb') as fin, open(output_path, 'wb') as fout:
+        for raw in fin:
+            stripped = raw.strip()
+            if not stripped:
+                continue
+            if frame_re.match(stripped):
+                pending_frame = raw
+                continue
+            groups = bracket_re.findall(stripped)
+            if not groups:
+                continue
+
+            total += 1
+            touches_noisy = False
+            for g in groups:
+                parts = g.split(b',')
+                if len(parts) < 4:
+                    continue
+                try:
+                    x = int(float(parts[0]))
+                    y = int(float(parts[1]))
+                except ValueError:
+                    continue
+                if (x, y) in bad:
+                    touches_noisy = True
+                    break
+
+            if not touches_noisy:
+                if pending_frame is not None:
+                    if wrote_any:
+                        fout.write(b'\n')
+                    fout.write(pending_frame)
+                    pending_frame = None
+                    wrote_any = True
+                fout.write(raw)
+                kept += 1
+
+    out_size = os.path.getsize(output_path)
+    global_log.info(
+        f"kept {humanize.metric(kept)}/{humanize.metric(total)} clusters, "
+        f"{humanize.naturalsize(in_size)} → {humanize.naturalsize(out_size)}")
+    return kept, total
+
+
+@log_offline_process('plot_clog_pixel_maps', input_type='file')
+def plot_clog_pixel_maps(file_path, npix=256, max_lines=None, max_bytes=None, cmap='jet',
+                         log_scale=False, show_1d=False):
+    """
+    Read a clog file and display three 2D maps side by side:
+      1. Hit count per pixel
+      2. Total energy per pixel (keV)
+      3. Median ToA per pixel (ns)
+
+    Streams the file so memory stays bounded even for very large files.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
+
+    counts = np.zeros((npix, npix), dtype=np.int64)
+    energy = np.zeros((npix, npix), dtype=np.float64)
+    toa_lists = [[[] for _ in range(npix)] for _ in range(npix)]
+
+    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
+        t_offset = frame_time if frame_time is not None else 0.0
+        for x, y, e, t in hits:
+            xi, yi = int(x), int(y)
+            if 0 <= xi < npix and 0 <= yi < npix:
+                counts[yi, xi] += 1
+                energy[yi, xi] += e
+                toa_lists[yi][xi].append(t_offset + t)
+
+    median_toa = np.full((npix, npix), np.nan)
+    for yi in range(npix):
+        for xi in range(npix):
+            if toa_lists[yi][xi]:
+                median_toa[yi, xi] = np.median(toa_lists[yi][xi])
+
+
+    nrows = 2 if show_1d else 1
+    ratios = {'height_ratios': [3, 1]} if show_1d else {}
+    fig, axes = plt.subplots(nrows, 3, figsize=(20, 10 if show_1d else 6),
+                             gridspec_kw=ratios, squeeze=False)
+
+    titles = ['Hit count per pixel', 'Total energy per pixel (keV)', 'Median ToA per pixel (ns)']
+    data = [counts, energy, median_toa]
+
+    for col, (d, title) in enumerate(zip(data, titles)):
+        ax2d = axes[0, col]
+
+        valid = d[np.isfinite(d) & (d > 0)]
+        if log_scale and valid.size > 0:
+            norm = LogNorm(vmin=max(valid.min(), 1e-10), vmax=valid.max())
+        else:
+            norm = None
+        im = ax2d.imshow(d, origin='lower', aspect='equal', cmap=cmap, norm=norm)
+        ax2d.set_title(title)
+        ax2d.set_xlabel('X (pixel)')
+        ax2d.set_ylabel('Y (pixel)')
+        fig.colorbar(im, ax=ax2d, shrink=0.8)
+
+        if show_1d:
+            ax1d = axes[1, col]
+            # Vectorized: build 1D pixel IDs = xi * npix + yi
+            xi_grid, yi_grid = np.meshgrid(np.arange(npix), np.arange(npix))
+            pids = (xi_grid * npix + yi_grid).ravel()
+            flat = d.ravel()
+            # Use fill_between for fast rendering (bar is too slow for 65K points)
+            order = np.argsort(pids)
+            pids, flat = pids[order], flat[order]
+            ax1d.fill_between(pids, flat, step='mid', color='steelblue', alpha=0.8)
+            if log_scale:
+                ax1d.set_yscale('log')
+            ax1d.set_xlabel('Pixel ID')
+            ax1d.set_ylabel(title.split(' per pixel')[0])
+            ax1d.set_xlim(0, npix * npix)
+
+    fig.suptitle(str(file_path), fontsize=9)
+    plt.tight_layout()
+    plt.show()
