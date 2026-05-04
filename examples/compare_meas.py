@@ -15,8 +15,8 @@ from tools.utils_pixet import t3pa2pixelHits
 from tools.pixelClusters_custom import pixelHits2pixelClusters
 from tools.reconstruction import valid_psource, reconstruct
 from tools.utils_opengate import setup_pixels, setup_hits, set_fluorescence
-from tools.utils_plot import compare_pixelClusters, plot_energies, compare_recos, \
-    plot_reco
+from tools.utils_plot import compare_pixelClusters, hit_cluster_coincidence_spectra, compare_CC_recos, \
+    CC_reco_3D
 
 path = Path('/media/billoud/029A94FF9A94F101/2nd_DRIVE/Advapix_TPX3_2mm_CdTe/In/')
 um, mm, keV, Bq, s = g4_units.um, g4_units.mm, g4_units.keV, g4_units.Bq, g4_units.s
@@ -100,8 +100,8 @@ def run(sensor_translation, time_sec, meas_file):
     ev_refc = gHits2CCevents(sim.output_dir / hits.output_filename, 'Cd111[245.390]_245.390')
     # 'Cd111[245.390]_245.390' if isotope source
 
-    plot_energies([hit_meas, hit_allp], [clust_meas, clust_allp], [ev_meas, ev_allp],
-                  max_keV=260, names=['Measurement', 'Allpix'])
+    hit_cluster_coincidence_spectra([hit_meas, hit_allp], [clust_meas, clust_allp], [ev_meas, ev_allp],
+                                    max_keV=260, names=['Measurement', 'Allpix'])
 
     ev_meas = local2global(ev_meas, sensor.translation, sensor.rotation, npix, pitch, t)
     ev_allp = local2global(ev_allp, sensor.translation, sensor.rotation, npix, pitch, t)

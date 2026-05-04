@@ -11,7 +11,7 @@ from tools.utils import charge_speed_mm_ns
 from tools.utils_opengate import copy_sim_from_script
 from tools.pixelClusters import pixelHits2pixelClusters
 from tools.allpix import gHits2allpix2pixelHits
-from tools.utils_plot import plot_energies
+from tools.utils_plot import hit_cluster_coincidence_spectra
 
 # INPUT
 sim = copy_sim_from_script('examples/main.py')
@@ -42,10 +42,10 @@ clstr_allpix = pixelHits2pixelClusters(hits_allpix, npix=npix, window_ns=100)
 evt_allp = pixelClusters2CCevents(clstr_allpix, thick=thick, speed=spd, twindow=100)
 
 # ENERGY SPECTRA
-plot_energies(max_keV=160,
-              hits_list=[hits_sgl, hits_allpix],
-              clusters_list=[clstr_sgl, clstr_allpix],
-              CCevents_list=[evt_sgl, evt_allp],
-              names=['singles', 'allpix'],
-              alphas=[0.5, 0.5, 0.5])
+hit_cluster_coincidence_spectra(max_keV=160,
+                                hits_list=[hits_sgl, hits_allpix],
+                                clusters_list=[clstr_sgl, clstr_allpix],
+                                CCevents_list=[evt_sgl, evt_allp],
+                                names=['singles', 'allpix'],
+                                alphas=[0.5, 0.5, 0.5])
 

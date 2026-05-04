@@ -7,7 +7,7 @@ from examples.gate_simu import gate_simu
 from tools.reconstruction import reconstruct
 from tools.CCevents import gHits2CCevents
 from tools.utils_opengate import set_fluorescence
-from tools.utils_plot import compare_recos
+from tools.utils_plot import compare_CC_recos
 
 if __name__ == "__main__":
     ## ============================
@@ -41,4 +41,4 @@ if __name__ == "__main__":
     v_coresi = reconstruct(events, method='coresi', **reco_params)
 
     # ###### DISPLAY  ##########
-    compare_recos([v_torch, v_coresi], names=['Torch', 'CoreSi'])
+    compare_CC_recos([v_torch, v_coresi], names=['Torch', 'CoreSi'])

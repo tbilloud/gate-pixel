@@ -10,10 +10,10 @@ from matplotlib.widgets import Slider
 if sys.platform == "darwin": matplotlib.use("macosx")
 
 
-def plot_energies(hits_list, clusters_list, CCevents_list, max_keV, min_keV=0,
-                  names=None, colors=None, alphas=None, max_y=None, ylog=False,
-                  output_filename=None,
-                  ):
+def hit_cluster_coincidence_spectra(hits_list, clusters_list, CCevents_list, max_keV, min_keV=0,
+                                    names=None, colors=None, alphas=None, max_y=None, ylog=False,
+                                    output_filename=None,
+                                    ):
     """
     Plots histograms of multiple pixel hits and clusters vertically.
     Each dataset is overlaid with a different color and label.
@@ -91,7 +91,7 @@ def plot_energies(hits_list, clusters_list, CCevents_list, max_keV, min_keV=0,
     return fig, axes
 
 
-def plot_reco(
+def CC_reco_3D(
         vol,
         vpitch=None,
         sensor_size=None,
@@ -226,7 +226,7 @@ def compare_pixelClusters(
     return fig, axes
 
 
-def compare_recos(volumes, names=None, slice_axis=2):
+def compare_CC_recos(volumes, names=None, slice_axis=2):
     """
     Compare multiple volumes side-by-side.
     For each volume, 5 slices along the specified axis are plotted.
@@ -284,8 +284,8 @@ def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
             ha='center', va='top', clip_on=False)
 
 
-def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6), log_x=False,
-                        log_y=False, title=None, split_by_parent=False, top_n=None):
+def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6), log_x=False,
+                   log_y=False, title=None, split_by_parent=False, top_n=None):
     """
     Plot spectra of decay products from an isotope source that hit the sensor.
 
@@ -392,7 +392,7 @@ def plot_decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range
     plt.show()
 
 
-def plot_cluster_viewer(pixel_hits, npix, min_size=60, tag_types=False, **tag_kwargs):
+def cluster_viewer(pixel_hits, npix, min_size=60, tag_types=False, **tag_kwargs):
     """
     Interactive 2D cluster viewer for pixelHits tagged with cluster ids.
     Each cluster is shown as a 2D heatmap of pixel energies with Prev/Next navigation.
@@ -498,7 +498,7 @@ def plot_cluster_viewer(pixel_hits, npix, min_size=60, tag_types=False, **tag_kw
     plt_tk.show()
 
 
-def plot_energy_hist_by_time(df, interval_ns, bins=100, x_range=None, max_plots=20, ncols=4, cmap=plt.cm.viridis):
+def spectra_by_time(df, interval_ns, bins=100, x_range=None, max_plots=20, ncols=4, cmap=plt.cm.viridis):
     """
     For pixelClusters, plot energy histograms for each ToA time interval of width `interval_ns` (ns).
     Useful in case of long measurements with time-varying conditions (e.g. source decay, sensor instability, heating).

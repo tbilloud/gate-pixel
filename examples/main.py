@@ -20,7 +20,7 @@ from tools.CCevents import gHits2CCevents, local2global, pixelClusters2CCevents
 from tools.utils import charge_speed_mm_ns
 from tools.allpix import gHits2allpix2pixelHits
 from tools.pixelClusters import pixelHits2pixelClusters
-from tools.utils_plot import plot_energies
+from tools.utils_plot import hit_cluster_coincidence_spectra
 
 if __name__ == "__main__":
     ## ============================
@@ -72,12 +72,12 @@ if __name__ == "__main__":
     evt_allp = pixelClusters2CCevents(clstr_allp, thick=thick, speed=spd, twindow=100)
 
     # ####### ENERGY SPECTRA ##########
-    plot_energies(max_keV=160,
-                  hits_list=[hits_sgl, hits_allp],
-                  clusters_list=[clstr_sgl, clstr_allp],
-                  CCevents_list=[evt_sgl, evt_allp],
-                  names=['singles', 'allpix'],
-                  alphas=[0.5, 0.5, 0.5])
+    hit_cluster_coincidence_spectra(max_keV=160,
+                                    hits_list=[hits_sgl, hits_allp],
+                                    clusters_list=[clstr_sgl, clstr_allp],
+                                    CCevents_list=[evt_sgl, evt_allp],
+                                    names=['singles', 'allpix'],
+                                    alphas=[0.5, 0.5, 0.5])
 
     # ##### CONES INTERSECTIONS  ######
     coord_transform = dict(translation=sensor.translation, rotation=sensor.rotation,

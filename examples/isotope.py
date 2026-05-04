@@ -11,7 +11,7 @@ from tools.allpix import *
 from tools.utils import charge_speed_mm_ns
 from tools.utils_opengate import get_isotope_data
 from tools.reconstruction import valid_psource
-from tools.utils_plot import plot_energies
+from tools.utils_plot import hit_cluster_coincidence_spectra
 from tools.pixelClusters import *
 from tools.CCevents import pixelClusters2CCevents, local2global, gHits2CCevents
 from examples.gate_simu import gate_simu
@@ -104,9 +104,9 @@ if __name__ == "__main__":
     # ################################ COMPARISON  #####################################
 
     # ENERGY HISTOGRAMS
-    plot_energies(max_keV=300, hits_list=[pixelHits],
-                  clusters_list=[pixelClusters],
-                  CCevents_list=[coin])
+    hit_cluster_coincidence_spectra(max_keV=300, hits_list=[pixelHits],
+                                    clusters_list=[pixelClusters],
+                                    CCevents_list=[coin])
 
     # CONE VALIDATION
     reco_params = {'vpitch': 0.1, 'vsize': [256, 256, 256], 'cone_width': 0.01,

@@ -4,7 +4,7 @@ import opengate_core
 from opengate.managers import Simulation
 from tools.CCevents import gHits2CCevents
 from tools.reconstruction import reconstruct
-from tools.utils_plot import plot_reco
+from tools.utils_plot import CC_reco_3D
 from opengate.utility import g4_units
 from tools.allpix import *
 import humanize
@@ -100,4 +100,4 @@ if __name__ == "__main__":
     vol = np.add.reduce(vols)
     out_file = Path(params['output']) / f"vol_multi_{humanize.metric(params['n'])}.npy"
     np.save(out_file, vol)
-    plot_reco(vol, vpitch=0.1)
+    CC_reco_3D(vol, vpitch=0.1)
