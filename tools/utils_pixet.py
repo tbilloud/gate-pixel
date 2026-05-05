@@ -1,6 +1,7 @@
 import os
 import re
 import time
+from collections import namedtuple
 from pathlib import Path
 
 import humanize
@@ -15,15 +16,26 @@ from tools.pixelHits import ENERGY_keV, TOA, PIXEL_ID
 from tools.utils import log_offline_process, get_pixID
 
 
+FrameInfo = namedtuple('FrameInfo', ['frame_num', 'time_ns', 'time_s'])
+
 def _parse_clog(file_path, max_lines=None, max_bytes=None):
     """
-    Core clog parser. Yields (hits, frame_time) for each cluster line, where
-    hits is a list of (x, y, energy, toa) tuples.
+    Core clog parser. Yields (hits, frame_info) for each cluster line, where
+    hits is a list of (x, y, energy, toa) tuples and frame_info is a FrameInfo
+    namedtuple with fields:
+      - frame_num (int):  frame index from the header line
+      - time_ns  (float): first timestamp in the header (nanoseconds)
+      - time_s   (float): second timestamp in the header (seconds)
 
-    Works on raw bytes to avoid the overhead of decoding every line.
+    Example frame header:
+        Frame 29903 (688317573795.312500, 0.000000 s)
+
+    Warning:
+         - sometimes TOA values are negative
+         - the frame time is reset at regular intervals, but not to zero
     """
-    frame_time = None
-    frame_re = re.compile(rb'^Frame\s+\d+\s+\(\s*([^,]+)\s*,')
+    frame_info = None
+    frame_re = re.compile(rb'^Frame\s+(\d+)\s+\(\s*([^,]+)\s*,\s*([^\s)]+)')
     bracket_re = re.compile(rb'\[([^\]]+)\]')
 
     if max_bytes is not None:
@@ -46,9 +58,13 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
             m = frame_re.match(stripped)
             if m:
                 try:
-                    frame_time = float(m.group(1))
+                    frame_info = FrameInfo(
+                        frame_num=int(m.group(1)),
+                        time_ns=float(m.group(2)),
+                        time_s=float(m.group(3)),
+                    )
                 except ValueError:
-                    frame_time = 0.0
+                    frame_info = FrameInfo(frame_num=0, time_ns=0.0, time_s=0.0)
                 continue
 
             groups = bracket_re.findall(stripped)
@@ -70,8 +86,133 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
                 hits.append((x, y, e, t))
 
             if hits:
-                yield hits, frame_time
+                yield hits, frame_info
 
+def debug_clog(file_path):
+    """
+    Scan a clog file and report:
+      1. Frame number gaps (not incremented by exactly 1)
+      2. Time resets (frame time_ns decreasing vs previous frame)
+    """
+    prev = None
+    n_clusters = 0
+    frame_count = 0  # number of unique frames seen
+    frames_since_reset = 0
+    gaps = []
+    resets = []
+
+    # Track per-frame info (one entry per frame, not per cluster)
+    seen_frames = {}  # frame_num -> frame_info, to avoid counting duplicates
+
+    for hits, frame_info in _parse_clog(file_path):
+        n_clusters += 1
+        fn = frame_info.frame_num
+
+        if fn not in seen_frames:
+            seen_frames[fn] = frame_info
+            frame_count += 1
+            frames_since_reset += 1
+
+            if prev is not None:
+                # Check frame_num increment
+                expected = prev.frame_num + 1
+                if fn != expected:
+                    gaps.append({'at_frame': fn, 'expected': expected, 'got': fn, 'skip': fn - expected})
+
+                # Check time monotonicity
+                if frame_info.time_ns < prev.time_ns:
+                    resets.append({
+                        'at_frame': fn,
+                        'frames_since_last_reset': frames_since_reset,
+                        'prev_time_ns': prev.time_ns,
+                        'new_time_ns': frame_info.time_ns,
+                        'decrease_ns': prev.time_ns - frame_info.time_ns,
+                        'decrease_s': (prev.time_ns - frame_info.time_ns) / 1e9,
+                    })
+                    frames_since_reset = 0
+
+            prev = frame_info
+
+    print(f"Total clusters: {n_clusters}, unique frames: {frame_count} (frames contain coincident clusters)")
+
+    if gaps:
+        print(f"\nFrame number gaps ({len(gaps)} total):")
+        for g in gaps:
+            print(f"  Frame {g['at_frame']}: expected {g['expected']}, skipped {g['skip']} frame(s)")
+    else:
+        print("Frame numbers: OK (always +1)")
+
+    if resets:
+        print(f"\nTime resets ({len(resets)} total):")
+        for r in resets:
+            print(f"  Frame {r['at_frame']} (after {r['frames_since_last_reset']} frames since last reset): "
+                  f"{r['prev_time_ns']:.3f} ns → {r['new_time_ns']:.3f} ns "
+                  f"(decrease: {r['decrease_ns']:.3f} ns / {r['decrease_s']:.6f} s)")
+    else:
+        print("Frame times: OK (always increasing)")
+
+    # Plot histogram of time deltas between consecutive frames
+    import matplotlib.pyplot as plt
+    from matplotlib.gridspec import GridSpec
+    sorted_frames = sorted(seen_frames.values(), key=lambda fi: fi.frame_num)
+    frame_indices = np.array([fi.frame_num for fi in sorted_frames])
+    times_ns = np.array([fi.time_ns for fi in sorted_frames])
+    deltas_ns = np.diff(times_ns)
+    delta_frame_indices = frame_indices[1:]  # x-axis for the delta-vs-index plot
+
+    # Exclude negative deltas (resets) from histograms
+    pos_mask = deltas_ns > 0
+    pos_deltas = deltas_ns[pos_mask]
+    n_resets = int((~pos_mask).sum())
+    reset_label = f'  [{n_resets} resets excluded]' if n_resets else ''
+
+    fig = plt.figure(figsize=(18, 14))
+    gs = GridSpec(4, 2, figure=fig, hspace=0.55, wspace=0.35)
+
+    # Row 0: frame time vs frame index (full width)
+    ax_t = fig.add_subplot(gs[0, :])
+    ax_t.plot(frame_indices, times_ns / 1e9, '.', markersize=1, alpha=0.5, color='steelblue')
+    ax_t.set_xlabel('Frame index')
+    ax_t.set_ylabel('Frame time (s)')
+    ax_t.set_title('Frame time vs frame index')
+    ax_t.grid(True, alpha=0.3)
+
+    hist_configs = [
+        (gs[1, 0], 'linear', 'log'),
+        (gs[1, 1], 'linear', 'linear'),
+    ]
+    for spec, xscale, yscale in hist_configs:
+        ax = fig.add_subplot(spec)
+        ax.hist(pos_deltas / 1e6, bins=200, color='steelblue', alpha=0.8)
+        ax.set_xscale(xscale)
+        ax.set_yscale(yscale)
+        ax.set_xlabel('Frame time delta (ms)')
+        ax.set_ylabel('Count')
+        ax.set_title(f'Inter-frame Δt histogram {reset_label}')
+        ax.grid(True, alpha=0.3)
+
+    # Row 2: Δt vs frame index (positive deltas only)
+    ax_dt = fig.add_subplot(gs[2, :])
+    ax_dt.plot(delta_frame_indices[pos_mask], pos_deltas / 1e6,
+               '.', markersize=1, alpha=0.5, color='steelblue')
+    ax_dt.set_xlabel('Frame index')
+    ax_dt.set_ylabel('Frame time delta (ms)')
+    ax_dt.set_title('Inter-frame Δt vs frame index')
+    ax_dt.grid(True, alpha=0.3)
+
+    # Row 3: resets vs frame index
+    ax_rst = fig.add_subplot(gs[3, :])
+    if n_resets:
+        neg_mask = ~pos_mask
+        ax_rst.plot(delta_frame_indices[neg_mask], deltas_ns[neg_mask] / 1e9,
+                    'rx', markersize=6)
+    ax_rst.set_xlabel('Frame index')
+    ax_rst.set_ylabel('Time decrease (s)')
+    ax_rst.set_title(f'Time resets vs frame index ({n_resets} total)')
+    ax_rst.grid(True, alpha=0.3)
+
+    fig.suptitle(str(file_path), fontsize=9)
+    plt.show()
 
 @log_offline_process('clog2clogEnergyFiltered', input_type='file')
 def clog2clogEnergyFiltered(input_path, output_path, min_energy_keV=0.0, max_energy_keV=float('inf')):
@@ -222,7 +363,7 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
     file_size = os.path.getsize(file_path)
     global_log.info(f"clog2pixelClusters: reading {file_path} ({humanize.naturalsize(file_size)})")
 
-    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
+    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes):
         total_e = sum(h[2] for h in hits)
         if total_e == 0:
             x_w = sum(h[0] for h in hits) / len(hits)
@@ -234,7 +375,7 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
         if omit_border and (int(round(x_w)) in border_set or int(round(y_w)) in border_set):
             continue
 
-        toa = (frame_time if frame_time is not None else 0.0) + min(h[3] for h in hits)
+        toa = (frame_info.time_ns if frame_info is not None else 0.0) + min(h[3] for h in hits)
         size = len(hits)
         delta_toa = max(h[3] for h in hits) - min(h[3] for h in hits) if size > 1 else float('nan')
 
@@ -265,8 +406,8 @@ def clog2pixelHitsTagged(file_path, npix, max_lines=None, max_bytes=None):
     rows = []
     cluster_id = 0
 
-    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
-        t_offset = frame_time if frame_time is not None else 0.0
+    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes):
+        t_offset = frame_info.time_ns if frame_info is not None else 0.0
         for x, y, e, t in hits:
             rows.append({
                 PIXEL_ID: get_pixID(int(x), int(y), npix), ENERGY_keV: e,
@@ -380,8 +521,8 @@ def find_noisy_pixels(file_path, npix=256, outlier_sigma_counts=None,
     toa_lists = [[[] for _ in range(npix)] for _ in range(npix)]
     neg_pixels = set()
 
-    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
-        t_offset = frame_time if frame_time is not None else 0.0
+    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes):
+        t_offset = frame_info.time_ns if frame_info is not None else 0.0
         for x, y, e, t in hits:
             xi, yi = int(x), int(y)
             if x < 0 or y < 0 or e < 0 or t < 0:
@@ -566,8 +707,8 @@ def plot_clog_pixel_maps(file_path, npix=256, max_lines=None, max_bytes=None, cm
     energy = np.zeros((npix, npix), dtype=np.float64)
     toa_lists = [[[] for _ in range(npix)] for _ in range(npix)]
 
-    for hits, frame_time in _parse_clog(file_path, max_lines, max_bytes):
-        t_offset = frame_time if frame_time is not None else 0.0
+    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes):
+        t_offset = frame_info.time_ns if frame_info is not None else 0.0
         for x, y, e, t in hits:
             xi, yi = int(x), int(y)
             if 0 <= xi < npix and 0 <= yi < npix:

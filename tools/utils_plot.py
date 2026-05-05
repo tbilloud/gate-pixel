@@ -558,3 +558,34 @@ def spectra_by_time(df, interval_ns, bins=100, x_range=None, max_plots=20, ncols
 
     plt.tight_layout()
     return fig, axes_flat[:nplots]
+
+def hits_timeline(pixelHits_list, names=None, figsize=(14, 5), alpha=0.5, markersize=1):
+    """
+    Plot hit timeline: hit index (x) vs ToA (y).
+    Useful to visualise the time distribution of hits and compare datasets.
+
+    Args:
+        pixelHits_list (pd.DataFrame | list of pd.DataFrame): One or more pixelHits DataFrames.
+        names (list of str, optional): Labels for each dataset.
+        figsize (tuple): Figure size.
+        alpha (float): Marker alpha.
+        markersize (float): Marker size.
+    """
+    from tools.pixelHits import TOA
+    if not isinstance(pixelHits_list, list):
+        pixelHits_list = [pixelHits_list]
+    if names is None:
+        names = [f"Dataset {i + 1}" for i in range(len(pixelHits_list))]
+
+    fig, ax = plt.subplots(figsize=figsize)
+    for df, name in zip(pixelHits_list, names):
+        ax.plot(np.arange(len(df)), df[TOA].to_numpy(),
+                '.', markersize=markersize, alpha=alpha, label=name)
+    ax.set_xlabel('Hit index')
+    ax.set_ylabel(TOA)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+    return fig, ax
+
