@@ -214,6 +214,82 @@ def debug_clog(file_path):
     fig.suptitle(str(file_path), fontsize=9)
     plt.show()
 
+@log_offline_process('clog2clogTimeFixed', input_type='file')
+def clog2clogTimeFixed(input_path, output_path=None):
+    """
+    Correct frame-time resets in a clog file and write a new file with monotonically
+    increasing frame timestamps.
+
+    When a reset is detected (time_ns[i] < time_ns[i-1]), an offset equal to
+    corrected[i-1] - time_ns[i] is added to all subsequent frames, making the
+    corrected series continuous (zero gap at the reset point).
+
+    Streams line-by-line so memory usage stays constant for large files.
+
+    Args:
+        input_path:   Path to the source .clog file.
+        output_path:  Path for the corrected output (default: input with '_timefixed' suffix).
+
+    Returns:
+        Number of resets corrected.
+    """
+    if output_path is None:
+        base, ext = os.path.splitext(input_path)
+        output_path = f"{base}_timefixed{ext}"
+
+    # ── Pass 1: build per-frame correction offsets ──────────────────────────
+    frame_re_parse = re.compile(rb'^Frame\s+(\d+)\s+\(\s*([^,]+)\s*,\s*([^\s)]+)')
+    seen: dict[int, float] = {}   # frame_num -> original time_ns
+    ordered: list[tuple[int, float]] = []  # (frame_num, time_ns) in encounter order
+
+    with open(input_path, 'rb') as f:
+        for raw in f:
+            m = frame_re_parse.match(raw.strip())
+            if m:
+                fn = int(m.group(1))
+                t  = float(m.group(2))
+                if fn not in seen:
+                    seen[fn] = t
+                    ordered.append((fn, t))
+
+    # compute cumulative offsets
+    offsets: dict[int, float] = {}  # frame_num -> offset to add
+    cumulative_offset = 0.0
+    prev_corrected = None
+    for fn, t_orig in ordered:
+        if prev_corrected is not None and (t_orig + cumulative_offset) < prev_corrected:
+            cumulative_offset += prev_corrected - (t_orig + cumulative_offset)
+        offsets[fn] = cumulative_offset
+        prev_corrected = t_orig + cumulative_offset
+
+    n_resets = sum(1 for o in offsets.values() if o > 0)
+    global_log.info(f"clog2clogTimeFixed: {n_resets} reset(s) to correct")
+
+    # ── Pass 2: stream-copy, replacing timestamps in Frame header lines ──────
+    frame_re_sub = re.compile(rb'^(Frame\s+\d+\s+\()([^,]+)(,.+)$')
+    in_size = os.path.getsize(input_path)
+
+    with open(input_path, 'rb') as fin, open(output_path, 'wb') as fout:
+        for raw in fin:
+            m = frame_re_parse.match(raw.strip())
+            if m:
+                fn = int(m.group(1))
+                t_orig = float(m.group(2))
+                corrected_t = t_orig + offsets.get(fn, 0.0)
+                # replace only the first timestamp field
+                raw = frame_re_sub.sub(
+                    lambda mo, ct=corrected_t: mo.group(1) + f'{ct:.6f}'.encode() + mo.group(3),
+                    raw.rstrip(b'\n')
+                ) + b'\n'
+            fout.write(raw)
+
+    out_size = os.path.getsize(output_path)
+    global_log.info(
+        f"clog2clogTimeFixed: {humanize.naturalsize(in_size)} → {humanize.naturalsize(out_size)}, "
+        f"{n_resets} reset(s) corrected")
+    return n_resets
+
+
 @log_offline_process('clog2clogEnergyFiltered', input_type='file')
 def clog2clogEnergyFiltered(input_path, output_path, min_energy_keV=0.0, max_energy_keV=float('inf')):
     """
