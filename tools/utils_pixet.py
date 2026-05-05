@@ -18,7 +18,7 @@ from tools.utils import log_offline_process, get_pixID
 
 FrameInfo = namedtuple('FrameInfo', ['frame_num', 'time_ns', 'time_s'])
 
-def _parse_clog(file_path, max_lines=None, max_bytes=None):
+def _parse_clog(file_path, max_lines=None, max_bytes=None, max_time_sec=None):
     """
     Core clog parser. Yields (hits, frame_info) for each cluster line, where
     hits is a list of (x, y, energy, toa) tuples and frame_info is a FrameInfo
@@ -30,6 +30,9 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
     Example frame header:
         Frame 29903 (688317573795.312500, 0.000000 s)
 
+    Args:
+        max_time_sec: If set, stop yielding once frame time_ns > max_time_sec * 1e9.
+
     Warning:
          - sometimes TOA values are negative
          - the frame time is reset at regular intervals, but not to zero
@@ -40,6 +43,7 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
 
     if max_bytes is not None:
         max_bytes = int(max_bytes)
+    max_time_ns = max_time_sec * 1e9 if max_time_sec is not None else None
 
     bytes_read = 0
 
@@ -65,6 +69,8 @@ def _parse_clog(file_path, max_lines=None, max_bytes=None):
                     )
                 except ValueError:
                     frame_info = FrameInfo(frame_num=0, time_ns=0.0, time_s=0.0)
+                if max_time_ns is not None and frame_info.time_ns > max_time_ns:
+                    return
                 continue
 
             groups = bracket_re.findall(stripped)
@@ -215,7 +221,7 @@ def debug_clog(file_path):
     plt.show()
 
 @log_offline_process('clog2clogTimeFixed', input_type='file')
-def clog2clogTimeFixed(input_path, output_path=None):
+def clog2clogTimeFixed(input_path, output_path=None, max_time_sec=None, shift_t0=False):
     """
     Correct frame-time resets in a clog file and write a new file with monotonically
     increasing frame timestamps.
@@ -227,8 +233,10 @@ def clog2clogTimeFixed(input_path, output_path=None):
     Streams line-by-line so memory usage stays constant for large files.
 
     Args:
-        input_path:   Path to the source .clog file.
-        output_path:  Path for the corrected output (default: input with '_timefixed' suffix).
+        input_path:    Path to the source .clog file.
+        output_path:   Path for the corrected output (default: input with '_timefixed' suffix).
+        max_time_sec:  If set, only frames with corrected time ≤ max_time_sec are written.
+        shift_t0:      If True, subtract the first frame's corrected time so t=0 at the first frame.
 
     Returns:
         Number of resets corrected.
@@ -263,11 +271,20 @@ def clog2clogTimeFixed(input_path, output_path=None):
         prev_corrected = t_orig + cumulative_offset
 
     n_resets = sum(1 for o in offsets.values() if o > 0)
-    global_log.info(f"clog2clogTimeFixed: {n_resets} reset(s) to correct")
+    # Apply shift_t0: subtract first frame's corrected time from all offsets
+    if shift_t0 and ordered:
+        first_fn, first_t = ordered[0]
+        t0 = first_t + offsets.get(first_fn, 0.0)
+        offsets = {fn: o - t0 for fn, o in offsets.items()}
+    max_time_ns = max_time_sec * 1e9 if max_time_sec is not None else None
+    global_log.info(f"clog2clogTimeFixed: {n_resets} reset(s) to correct"
+                    + (f", keeping up to {max_time_sec} s" if max_time_sec else "")
+                    + (", shift_t0=True" if shift_t0 else ""))
 
     # ── Pass 2: stream-copy, replacing timestamps in Frame header lines ──────
     frame_re_sub = re.compile(rb'^(Frame\s+\d+\s+\()([^,]+)(,.+)$')
     in_size = os.path.getsize(input_path)
+    pending_frame = None
 
     with open(input_path, 'rb') as fin, open(output_path, 'wb') as fout:
         for raw in fin:
@@ -276,12 +293,18 @@ def clog2clogTimeFixed(input_path, output_path=None):
                 fn = int(m.group(1))
                 t_orig = float(m.group(2))
                 corrected_t = t_orig + offsets.get(fn, 0.0)
+                if max_time_ns is not None and corrected_t > max_time_ns:
+                    break  # file is ordered by time; safe to stop
                 # replace only the first timestamp field
-                raw = frame_re_sub.sub(
+                pending_frame = frame_re_sub.sub(
                     lambda mo, ct=corrected_t: mo.group(1) + f'{ct:.6f}'.encode() + mo.group(3),
                     raw.rstrip(b'\n')
                 ) + b'\n'
-            fout.write(raw)
+            else:
+                if pending_frame is not None:
+                    fout.write(pending_frame)
+                    pending_frame = None
+                fout.write(raw)
 
     out_size = os.path.getsize(output_path)
     global_log.info(
@@ -423,8 +446,8 @@ def clog2clogBorderFiltered(input_path, output_path, border_values=(0, 255)):
     return kept, total
 
 @log_offline_process('pixelClusters', input_type='file')
-def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=False, border_values=(0, 255),
-                       chunk_size=100_000):
+def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, max_time_sec=None,
+                       omit_border=False, border_values=(0, 255), chunk_size=100_000):
     """
     Convert a clog file from the Pixet software (Advacam) to a DataFrame of pixel clusters.
     See: https://wiki.advacam.cz/index.php/PIXet
@@ -439,7 +462,7 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
     file_size = os.path.getsize(file_path)
     global_log.info(f"clog2pixelClusters: reading {file_path} ({humanize.naturalsize(file_size)})")
 
-    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes):
+    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes, max_time_sec):
         total_e = sum(h[2] for h in hits)
         if total_e == 0:
             x_w = sum(h[0] for h in hits) / len(hits)
@@ -474,7 +497,7 @@ def clog2pixelClusters(file_path, max_lines=None, max_bytes=None, omit_border=Fa
 
 
 @log_offline_process('pixelHitsTagged', input_type='file')
-def clog2pixelHitsTagged(file_path, npix, max_lines=None, max_bytes=None):
+def clog2pixelHitsTagged(file_path, npix, max_lines=None, max_bytes=None, max_time_sec=None):
     """
     Convert a clog file to a DataFrame of individual pixel hits, each tagged with a cluster_id.
     Columns: PixelID (int16), Energy (keV), ToA (ns), cluster_id
@@ -482,7 +505,7 @@ def clog2pixelHitsTagged(file_path, npix, max_lines=None, max_bytes=None):
     rows = []
     cluster_id = 0
 
-    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes):
+    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes, max_time_sec):
         t_offset = frame_info.time_ns if frame_info is not None else 0.0
         for x, y, e, t in hits:
             rows.append({
@@ -571,7 +594,7 @@ def t3pa2pixelHits(t3pa_file, calib, nrows=None):
 
 def find_noisy_pixels(file_path, npix=256, outlier_sigma_counts=None,
                       outlier_sigma_energy=None, outlier_sigma_toa=None,
-                      max_lines=None, max_bytes=None):
+                      max_lines=None, max_bytes=None, max_time_sec=None):
     """
     Scan a clog file and return a set of (x, y) pixel coordinates that are noisy:
       - pixels with negative coordinate/energy/time values
@@ -597,7 +620,7 @@ def find_noisy_pixels(file_path, npix=256, outlier_sigma_counts=None,
     toa_lists = [[[] for _ in range(npix)] for _ in range(npix)]
     neg_pixels = set()
 
-    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes):
+    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes, max_time_sec):
         t_offset = frame_info.time_ns if frame_info is not None else 0.0
         for x, y, e, t in hits:
             xi, yi = int(x), int(y)
@@ -766,8 +789,8 @@ def clog2clogNoiseFree(input_path, output_path=None, npix=256, noisy_pixels=None
 
 
 @log_offline_process('plot_clog_pixel_maps', input_type='file')
-def plot_clog_pixel_maps(file_path, npix=256, max_lines=None, max_bytes=None, cmap='jet',
-                         log_scale=False, show_1d=False):
+def plot_clog_pixel_maps(file_path, npix=256, max_lines=None, max_bytes=None, max_time_sec=None,
+                         cmap='jet', log_scale=False, show_1d=False):
     """
     Read a clog file and display three 2D maps side by side:
       1. Hit count per pixel
@@ -783,7 +806,7 @@ def plot_clog_pixel_maps(file_path, npix=256, max_lines=None, max_bytes=None, cm
     energy = np.zeros((npix, npix), dtype=np.float64)
     toa_lists = [[[] for _ in range(npix)] for _ in range(npix)]
 
-    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes):
+    for hits, frame_info in _parse_clog(file_path, max_lines, max_bytes, max_time_sec):
         t_offset = frame_info.time_ns if frame_info is not None else 0.0
         for x, y, e, t in hits:
             xi, yi = int(x), int(y)
