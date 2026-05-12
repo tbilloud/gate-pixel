@@ -284,8 +284,8 @@ def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
             ha='center', va='top', clip_on=False)
 
 
-def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=None, figsize=(10, 6), log_x=False,
-                   log_y=False, title=None, split_by_parent=False, top_n=None):
+def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None, figsize=(10, 6), log_x=False,
+                   log_y=False, title=None, by_parent=False, top_n=None, ax=None):
     """
     Plot spectra of decay products from an isotope source that hit the sensor.
 
@@ -321,12 +321,12 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=
         min_keV: minimum energy
         max_keV: maximum energy
         bins: number of bins
-        hist_range_keV: range for histogram
+        range_keV: range for histogram
         figsize: figure size
         log_x: if True, plot x-axis in log scale
         log_y: if True, plot y-axis in log scale
         title: plot title
-        split_by_parent: if True, overlay one histogram per ParentParticleName on the same plot
+        by_parent: if True, overlay one histogram per ParentParticleName on the same plot
         top_n: if set (int) and split_by_parent is True, only show the N parents with the most entries
     """
 
@@ -336,7 +336,7 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=
            (df_hits['KineticEnergy'].to_numpy() < (max_keV / 1000))
 
     cols = ['EventID', 'TrackID', 'ParticleName', 'KineticEnergy']
-    if split_by_parent:
+    if by_parent:
         cols.append('ParentParticleName')
     df_primaries = df_hits.loc[mask, cols].copy()
     if df_primaries.empty:
@@ -353,22 +353,25 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=
 
     # prepare bins / range
     ke_min, ke_max = df_first['KineticEnergy'].min(), df_first['KineticEnergy'].max()
-    if hist_range_keV is None:
-        hist_range_keV = (max(0.0, ke_min * 0.9), ke_max * 1.1)
-    bin_edges = np.linspace(hist_range_keV[0], hist_range_keV[1], bins + 1)
+    if range_keV is None:
+        range_keV = (max(0.0, ke_min * 0.9), ke_max * 1.1)
+    bin_edges = np.linspace(range_keV[0], range_keV[1], bins + 1)
 
-    plt.figure(figsize=figsize)
+    standalone = ax is None
+    if standalone:
+        plt.figure(figsize=figsize)
+        ax = plt.gca()
 
-    if not split_by_parent:
+    if not by_parent:
         # ── group by ParticleName (original behaviour) ──
-        plt.hist(df_first['KineticEnergy'].to_numpy(), bins=bin_edges,
-                 histtype='stepfilled', alpha=0.18, label='all particles')
+        ax.hist(df_first['KineticEnergy'].to_numpy(), bins=bin_edges,
+                histtype='stepfilled', alpha=0.18, label='all particles')
         for pname, grp in df_first.groupby('ParticleName'):
             data = grp['KineticEnergy'].to_numpy()
             if data.size == 0:
                 continue
             color = 'red' if pname == 'e-' else ('green' if pname == 'gamma' else None)
-            plt.hist(data, bins=bin_edges, histtype='step', linewidth=1.5, label=str(pname), color=color)
+            ax.hist(data, bins=bin_edges, histtype='step', linewidth=1.5, label=str(pname), color=color)
     else:
         # ── one histogram per ParentParticleName, overlaid ──
         counts = df_first['ParentParticleName'].value_counts()  # sorted descending
@@ -378,18 +381,19 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, hist_range_keV=
             data = df_first.loc[df_first['ParentParticleName'] == parent, 'KineticEnergy'].to_numpy()
             if data.size == 0:
                 continue
-            plt.hist(data, bins=bin_edges, histtype='step', linewidth=1.5,
-                     label=f'{parent} (n={n})')
+            ax.hist(data, bins=bin_edges, histtype='step', linewidth=1.5,
+                    label=f'{parent} (n={n})')
 
-    if log_x: plt.xscale('log')
-    if log_y: plt.yscale('log')
-    plt.title(title or 'Kinetic energy of particles emitted by the source')
-    plt.xlim(hist_range_keV[0], hist_range_keV[1])
-    plt.xlabel('Energy (keV)')
-    plt.ylabel('Counts')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    if log_x: ax.set_xscale('log')
+    if log_y: ax.set_yscale('log')
+    ax.set_title(title or 'Kinetic energy of particles emitted by the source')
+    ax.set_xlim(range_keV[0], range_keV[1])
+    ax.set_xlabel('Energy (keV)')
+    ax.set_ylabel('Counts')
+    ax.legend()
+    if standalone:
+        plt.tight_layout()
+        plt.show()
 
 
 def cluster_viewer(pixel_hits, npix, min_size=60, tag_types=False, **tag_kwargs):
