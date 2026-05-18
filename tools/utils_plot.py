@@ -382,7 +382,7 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
             if data.size == 0:
                 continue
             ax.hist(data, bins=bin_edges, histtype='step', linewidth=1.5,
-                    label=f'{parent} (n={n})')
+                    label=f'{parent}')
 
     if log_x: ax.set_xscale('log')
     if log_y: ax.set_yscale('log')
@@ -390,7 +390,7 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
     ax.set_xlim(range_keV[0], range_keV[1])
     ax.set_xlabel('Energy (keV)')
     ax.set_ylabel('Counts')
-    ax.legend()
+    ax.legend(fontsize='large')
     if standalone:
         plt.tight_layout()
         plt.show()
