@@ -285,11 +285,16 @@ def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
 
 
 def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None, figsize=(10, 6), log_x=False,
-                   log_y=False, title=None, by_parent=False, top_n=None, ax=None, ax_rate=None, rate_bin_sec=None):
+                   log_y=False, title=None, by_parent=False, top_n=None, rate_bin_sec=None,
+                   rate_log_x=False, rate_log_y=False):
     """
     Plot spectra of decay products from an isotope source that hit the sensor. 2 ways:
     - by particle types, without distinguishing parent isotopes
     - by parent isotopes, without distinguishing particle types (useful for decay chains)
+
+    Always creates its own figure. If ``rate_bin_sec`` is set, a second subplot with
+    hit-rate vs time is added below the energy spectrum.
+    Returns the axes so the figure can be further customised or embedded.
 
     Example usage:
         sim = Simulation()
@@ -306,7 +311,7 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
         source.n = 1e4
         sim.run()
         df_hits = uproot.open('./test.root')[hits.name].arrays(library='pd')
-        decay_products(df_hits, min_keV=0, hist_range_keV=[0, 1000], bins=1000)
+        ax_e, ax_r = decay_products(df_hits, min_keV=0, range_keV=[0, 1000], bins=1000, rate_bin_sec=0.1)
 
     Notes:
 
@@ -317,21 +322,26 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
 
         In case of beta decays, one will see neutrinos if `hits.keep_zero_edep = True`
 
-
     Args:
         df_hits: DataFrame of hits
-        min_keV: minimum energy
-        max_keV: maximum energy
+        min_keV: minimum energy (keV)
+        max_keV: maximum energy (keV)
         bins: number of bins
-        range_keV: range for histogram
+        range_keV: (min, max) range in keV for the histogram; auto-detected if None
         figsize: figure size
         log_x: if True, plot x-axis in log scale
         log_y: if True, plot y-axis in log scale
         title: plot title
         by_parent: if True, overlay one histogram per ParentParticleName on the same plot
-        top_n: if set (int) and split_by_parent is True, only show the N parents with the most entries
-        ax_rate: optional matplotlib Axes for hit-rate vs time plot; if None, no rate plot is drawn
-        rate_bin_sec: bin width (seconds) for the hit-rate plot (default 1.0)
+        top_n: if set (int) and by_parent is True, only show the N parents with the most entries
+        rate_bin_sec: bin width (seconds) for an optional hit-rate vs time subplot;
+                      if None no rate plot is drawn; if 0 uses 10 equal bins over the full time range
+        rate_log_x: if True, use log scale on the x-axis of the rate plot
+        rate_log_y: if True, use log scale on the y-axis of the rate plot
+
+    Returns:
+        ax_energy (Axes): the energy-spectrum axes
+        ax_rate (Axes or None): the hit-rate axes, or None if rate_bin_sec is None
     """
 
     # build mask with NumPy arrays to avoid awkward-pandas issues
@@ -342,12 +352,12 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
     cols = ['EventID', 'TrackID', 'ParticleName', 'KineticEnergy']
     if by_parent:
         cols.append('ParentParticleName')
-    if ax_rate is not None and 'GlobalTime' in df_hits.columns:
+    if rate_bin_sec is not None and 'GlobalTime' in df_hits.columns:
         cols.append('GlobalTime')
     df_primaries = df_hits.loc[mask, cols].copy()
     if df_primaries.empty:
         print("No RadioactiveDecay tracks with KineticEnergy > 0 found.")
-        return
+        return None, None
 
     # ensure numeric float array for KineticEnergy
     df_primaries['KineticEnergy'] = df_primaries['KineticEnergy'].to_numpy().astype(float)
@@ -363,10 +373,13 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
         range_keV = (max(0.0, ke_min * 0.9), ke_max * 1.1)
     bin_edges = np.linspace(range_keV[0], range_keV[1], bins + 1)
 
-    standalone = ax is None
-    if standalone:
-        plt.figure(figsize=figsize)
-        ax = plt.gca()
+    # create figure
+    has_rate = rate_bin_sec is not None and 'GlobalTime' in df_first.columns
+    nrows = 2 if has_rate else 1
+    fig, axes = plt.subplots(nrows=nrows, ncols=1, figsize=(figsize[0], figsize[1] * nrows / 1),
+                             squeeze=False)
+    ax = axes[0, 0]
+    ax_rate = axes[1, 0] if has_rate else None
 
     if not by_parent:
         # ── group by ParticleName (original behaviour) ──
@@ -399,14 +412,17 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
     ax.legend(fontsize='large')
 
     # ── optional hit-rate vs time plot ──────────────────────────────────────
-    if ax_rate is not None and 'GlobalTime' in df_first.columns:
+    if has_rate:
         gt_s = df_first['GlobalTime'].to_numpy().astype(float) / 1e9  # ns → s
         if gt_s.size > 0:
             t_max = gt_s.max()
-            if rate_bin_sec is None:
+            if rate_bin_sec is None or rate_bin_sec == 0:
                 _rate_bin = t_max / 10.0 if t_max > 0 else 1.0
+                bin_edges_t = np.linspace(0, t_max, 11)  # exactly 10 bins
             else:
                 _rate_bin = rate_bin_sec
+                n_bins = max(1, int(np.ceil(t_max / _rate_bin)))
+                bin_edges_t = np.linspace(0, n_bins * _rate_bin, n_bins + 1)
             # choose a human-friendly time unit based on t_max
             if t_max < 1e-6:
                 t_scale, t_unit = 1e9, 'ns'
@@ -422,7 +438,6 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
                 t_scale, t_unit = 1 / 3600.0, 'h'
             else:
                 t_scale, t_unit = 1 / 86400.0, 'days'
-            bin_edges_t = np.arange(0, t_max + _rate_bin, _rate_bin)
             bin_centers_t = (bin_edges_t[:-1] + _rate_bin / 2) * t_scale
             if by_parent and 'ParentParticleName' in df_first.columns:
                 parents_shown = counts.index.tolist() if top_n is not None else df_first['ParentParticleName'].unique().tolist()
@@ -439,10 +454,12 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
             ax_rate.legend(fontsize='large')
             ax_rate.grid(True, alpha=0.3)
             ax_rate.set_xlim(left=0)
+            if rate_log_x: ax_rate.set_xscale('log')
+            if rate_log_y: ax_rate.set_yscale('log')
 
-    if standalone:
-        plt.tight_layout()
-        plt.show()
+    plt.tight_layout()
+    plt.show()
+    return ax, ax_rate
 
 
 def cluster_viewer(pixel_hits, npix, min_size=60, tag_types=False, **tag_kwargs):
