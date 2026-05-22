@@ -91,6 +91,225 @@ def hit_cluster_coincidence_spectra(hits_list, clusters_list, CCevents_list, max
     return fig, axes
 
 
+def electron_tracks_3D_viewer(gateHits, figsize=(13, 8), sensor_half_size_mm=None,
+                              min_vertex_keV=None, pixel_pitch_mm=None,
+                              show_pixel_wireframe=True):
+    """
+    Interactive 3D viewer that displays **all tracks** of one event at a time,
+    each TrackID drawn in a distinct colour.  Prev / Next buttons navigate events.
+    Intended to visualize electron tracks in tissue or in a pixelated sensor.
+
+    Args:
+        gateHits: DataFrame with gate hits columns (TrackID, EventID,
+                  CurrentStepNumber, PrePosition_XYZ, Position_XYZ,
+                  TrackVertexKineticEnergy).
+        figsize: figure size.
+        sensor_half_size_mm: optional (hx, hy, hz) half-extents (mm) to draw a
+                             wireframe sensor box.  None = omitted.
+        min_vertex_keV: if set, only tracks whose TrackVertexKineticEnergy
+                        (first hit, in MeV converted to keV) is >= this threshold
+                        are drawn.  Tracks below the threshold are hidden but
+                        their count is still shown in the info panel.
+        pixel_pitch_mm: if set (float, e.g. 0.055 for 55 µm), X/Y axes show
+                        pixel indices instead of mm values, and the pitch is
+                        written in the axis labels.
+        show_pixel_wireframe: if True (default) and pixel_pitch_mm is set,
+                              draws a 3-D wireframe cage of pixel columns.
+    """
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt_tk
+    from matplotlib.widgets import Button
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+    import matplotlib.cm as cm
+
+    df = gateHits.sort_values(['EventID', 'TrackID', 'CurrentStepNumber'])
+    event_ids = sorted(df['EventID'].unique().tolist())
+
+    # pre-compute per-event per-track waypoint arrays + vertex KE
+    def _track_positions(grp):
+        grp = grp.sort_values('CurrentStepNumber')
+        start = grp[['PrePosition_X', 'PrePosition_Y', 'PrePosition_Z']].iloc[[0]].to_numpy()
+        ends  = grp[['Position_X',    'Position_Y',    'Position_Z']].to_numpy()
+        return np.vstack([start, ends])
+
+    def _track_vertex_keV(grp):
+        """Return TrackVertexKineticEnergy (MeV→keV) for the track, from its first step."""
+        grp = grp.sort_values('CurrentStepNumber')
+        if 'TrackVertexKineticEnergy' in grp.columns:
+            return float(grp['TrackVertexKineticEnergy'].iloc[0]) * 1000.0
+        return np.nan
+
+    event_tracks = {}     # eid -> {tid: pos_array}
+    event_vke    = {}     # eid -> {tid: vertex_keV}
+    for eid in event_ids:
+        ev   = df[df['EventID'] == eid]
+        tids = sorted(ev['TrackID'].unique().tolist())
+        event_tracks[eid] = {tid: _track_positions(ev[ev['TrackID'] == tid]) for tid in tids}
+        event_vke[eid]    = {tid: _track_vertex_keV(ev[ev['TrackID'] == tid]) for tid in tids}
+
+    n_events = len(event_ids)
+    state = {'idx': 0}
+
+    fig3d  = plt_tk.figure(figsize=figsize)
+    ax3d   = fig3d.add_axes([0.04, 0.12, 0.65, 0.84], projection='3d')
+    ax_lg  = fig3d.add_axes([0.71, 0.12, 0.27, 0.84])
+    ax_lg.axis('off')
+
+    def _draw(idx):
+        ax3d.cla()
+        ax_lg.cla()
+        ax_lg.axis('off')
+
+        eid         = event_ids[idx]
+        tracks      = event_tracks[eid]
+        vkes        = event_vke[eid]
+        all_tids    = list(tracks.keys())
+
+        # split into shown / hidden based on threshold
+        if min_vertex_keV is not None:
+            shown_tids  = [t for t in all_tids if vkes.get(t, np.nan) >= min_vertex_keV]
+            hidden_tids = [t for t in all_tids if t not in shown_tids]
+        else:
+            shown_tids  = all_tids
+            hidden_tids = []
+
+        cmap = cm.get_cmap('tab20', max(len(shown_tids), 1))
+
+        for i, tid in enumerate(shown_tids):
+            pos   = tracks[tid]
+            color = cmap(i)
+            vke   = vkes.get(tid, np.nan)
+            dx = pos[:, 0].max() - pos[:, 0].min()
+            dy = pos[:, 1].max() - pos[:, 1].min()
+            dz = pos[:, 2].max() - pos[:, 2].min()
+            ax3d.plot(pos[:, 0], pos[:, 1], pos[:, 2],
+                      '-o', markersize=2, linewidth=1.0, color=color,
+                      label=f'TID {tid}  {vke:.1f} keV  ΔX={dx:.3f} ΔY={dy:.3f} ΔZ={dz:.3f} mm')
+            ax3d.scatter(pos[0,  0], pos[0,  1], pos[0,  2],
+                         color=color, s=25, marker='^', zorder=5)
+            ax3d.scatter(pos[-1, 0], pos[-1, 1], pos[-1, 2],
+                         color=color, s=25, marker='s', zorder=5)
+
+        # optional sensor box
+        if sensor_half_size_mm is not None:
+            all_pts = np.vstack(list(tracks.values()))
+            hx, hy, hz = sensor_half_size_mm
+            cx = (all_pts[:, 0].max() + all_pts[:, 0].min()) / 2
+            cy = (all_pts[:, 1].max() + all_pts[:, 1].min()) / 2
+            cz = (all_pts[:, 2].max() + all_pts[:, 2].min()) / 2
+            for xs in [cx - hx, cx + hx]:
+                for ys in [cy - hy, cy + hy]:
+                    ax3d.plot([xs, xs], [ys, ys], [cz - hz, cz + hz], 'k-', alpha=0.2, lw=0.7)
+            for xs in [cx - hx, cx + hx]:
+                for zs in [cz - hz, cz + hz]:
+                    ax3d.plot([xs, xs], [cy - hy, cy + hy], [zs, zs], 'k-', alpha=0.2, lw=0.7)
+            for ys in [cy - hy, cy + hy]:
+                for zs in [cz - hz, cz + hz]:
+                    ax3d.plot([cx - hx, cx + hx], [ys, ys], [zs, zs], 'k-', alpha=0.2, lw=0.7)
+
+        # equal aspect ratio: use all shown points to compute a cubic bounding box
+        if shown_tids:
+            all_shown_pts = np.vstack([tracks[t] for t in shown_tids])
+            xc = (all_shown_pts[:, 0].max() + all_shown_pts[:, 0].min()) / 2
+            yc = (all_shown_pts[:, 1].max() + all_shown_pts[:, 1].min()) / 2
+            zc = (all_shown_pts[:, 2].max() + all_shown_pts[:, 2].min()) / 2
+            half = max(
+                all_shown_pts[:, 0].max() - all_shown_pts[:, 0].min(),
+                all_shown_pts[:, 1].max() - all_shown_pts[:, 1].min(),
+                all_shown_pts[:, 2].max() - all_shown_pts[:, 2].min(),
+            ) / 2.0
+            if half == 0:
+                half = 0.1
+
+
+            ax3d.set_xlim(xc - half, xc + half)
+            ax3d.set_ylim(yc - half, yc + half)
+            ax3d.set_zlim(zc - half, zc + half)
+
+            if pixel_pitch_mm is not None:
+                from matplotlib.ticker import MultipleLocator, FuncFormatter
+                pitch = float(pixel_pitch_mm)
+
+                # coarser label ticks (~6 per axis), snapped to pixel boundaries
+                label_step = pitch * max(1, round(2 * half / pitch / 6))
+                ax3d.xaxis.set_major_locator(MultipleLocator(label_step))
+                ax3d.yaxis.set_major_locator(MultipleLocator(label_step))
+
+                # show pixel index instead of mm value
+                ax3d.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f'{int(round(v / pitch))}'))
+                ax3d.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f'{int(round(v / pitch))}'))
+
+                if show_pixel_wireframe:
+                    x_lo, x_hi = xc - half, xc + half
+                    y_lo, y_hi = yc - half, yc + half
+                    z_lo, z_hi = zc - half, zc + half
+
+                    x_ticks = np.arange(np.floor(x_lo / pitch) * pitch, x_hi + pitch, pitch)
+                    y_ticks = np.arange(np.floor(y_lo / pitch) * pitch, y_hi + pitch, pitch)
+
+                    gkw = dict(color='steelblue', alpha=0.45, linewidth=0.6, zorder=0)
+                    for z_level in [z_lo, z_hi]:
+                        for xg in x_ticks:
+                            ax3d.plot([xg, xg], [y_lo, y_hi], [z_level, z_level], **gkw)
+                        for yg in y_ticks:
+                            ax3d.plot([x_lo, x_hi], [yg, yg], [z_level, z_level], **gkw)
+                    for xg in x_ticks:
+                        for yg in y_ticks:
+                            ax3d.plot([xg, xg], [yg, yg], [z_lo, z_hi], **gkw)
+
+        pitch_um = int(round(float(pixel_pitch_mm) * 1000)) if pixel_pitch_mm is not None else None
+        ax3d.set_xlabel(f'X pixel  (pitch={pitch_um} µm)' if pitch_um else 'X (mm)')
+        ax3d.set_ylabel(f'Y pixel  (pitch={pitch_um} µm)' if pitch_um else 'Y (mm)')
+        ax3d.set_zlabel('Z (mm)')
+        ax3d.set_title(f'Event {idx + 1}/{n_events}  —  EventID {eid}  '
+                       f'({len(shown_tids)} shown / {len(all_tids)} total tracks)')
+
+        handles, labels = ax3d.get_legend_handles_labels()
+        ax_lg.legend(handles, labels, loc='upper left', fontsize=7,
+                     title='TID  vertex_keV  extents (mm)  (▲ start  ■ end)',
+                     title_fontsize=7, framealpha=0.6)
+
+        # info text: filter summary
+        shown_vkes  = [vkes.get(t, np.nan) for t in shown_tids]
+        hidden_vkes = [vkes.get(t, np.nan) for t in hidden_tids]
+        shown_mean  = float(np.nanmean(shown_vkes))  if shown_vkes  else float('nan')
+        hidden_mean = float(np.nanmean(hidden_vkes)) if hidden_vkes else float('nan')
+        all_vkes    = [vkes.get(t, np.nan) for t in all_tids]
+        all_mean    = float(np.nanmean(all_vkes)) if all_vkes else float('nan')
+
+        info_lines = [f'EventID: {eid}',
+                      f'Total tracks:  {len(all_tids)}  (mean {all_mean:.1f} keV)',
+                      f'Shown tracks:  {len(shown_tids)}  (mean {shown_mean:.1f} keV)']
+        if min_vertex_keV is not None:
+            info_lines.append(f'(threshold: ≥ {min_vertex_keV} keV)')
+            info_lines.append(f'Hidden tracks: {len(hidden_tids)}  (mean {hidden_mean:.1f} keV)')
+        ax_lg.text(0.02, 0.02, '\n'.join(info_lines),
+                   transform=ax_lg.transAxes, va='bottom', ha='left',
+                   fontsize=8, family='monospace',
+                   bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.7))
+
+        fig3d.canvas.draw_idle()
+
+    def on_prev(_):
+        state['idx'] = (state['idx'] - 1) % n_events
+        _draw(state['idx'])
+
+    def on_next(_):
+        state['idx'] = (state['idx'] + 1) % n_events
+        _draw(state['idx'])
+
+    ax_prev = fig3d.add_axes((0.28, 0.02, 0.15, 0.06))
+    ax_next = fig3d.add_axes((0.48, 0.02, 0.15, 0.06))
+    btn_prev = Button(ax_prev, '← Prev')
+    btn_next = Button(ax_next, 'Next →')
+    btn_prev.on_clicked(on_prev)
+    btn_next.on_clicked(on_next)
+
+    _draw(0)
+    plt_tk.show()
+
+
 def CC_reco_3D(
         vol,
         vpitch=None,
