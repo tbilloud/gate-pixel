@@ -505,7 +505,7 @@ def add_line_to_spectrum(ax, text, energy, color, fontsize=12, rotation=45):
 
 def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None, figsize=(10, 6), log_x=False,
                    log_y=False, title=None, by_parent=False, top_n=None, rate_bin_sec=None,
-                   rate_log_x=False, rate_log_y=False):
+                   rate_log_x=False, rate_log_y=False, ax=None):
     """
     Plot spectra of decay products from an isotope source that hit the sensor. 2 ways:
     - by particle types, without distinguishing parent isotopes
@@ -557,11 +557,22 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
                       if None no rate plot is drawn; if 0 uses 10 equal bins over the full time range
         rate_log_x: if True, use log scale on the x-axis of the rate plot
         rate_log_y: if True, use log scale on the y-axis of the rate plot
+        ax (matplotlib.axes.Axes, optional): if provided, the energy histogram is drawn
+            onto this existing axes instead of creating a new figure.  In this
+            *embedded* mode no new figure is created, ``plt.show()`` is NOT called,
+            and ``ax_rate`` is always ``None``.  Pass the axes of your own figure to
+            overlay the decay-product spectrum on top of other histograms.
+            When ``range_keV`` and/or ``bins`` are left at their defaults, they are
+            **automatically inferred** from the histogram patches already drawn on
+            ``ax``, so you do not need to repeat those values.
 
     Returns:
         ax_energy (Axes): the energy-spectrum axes
         ax_rate (Axes or None): the hit-rate axes, or None if rate_bin_sec is None
+            (always None in embedded mode)
     """
+
+    embedded = ax is not None
 
     # build mask with NumPy arrays to avoid awkward-pandas issues
     mask = ((df_hits['TrackCreatorProcess'].to_numpy() == 'RadioactiveDecay') | (df_hits['ParentID'].to_numpy() == 0)) & \
@@ -587,18 +598,34 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
     df_first['KineticEnergy'] = df_first['KineticEnergy'].mul(1000)
 
     # prepare bins / range
+    # in embedded mode, infer range and bins from the existing patches on the axes
+    # (so the caller doesn't have to repeat the same values)
+    if embedded and ax.patches:
+        _xs = sorted(set(round(p.get_x(), 10) for p in ax.patches))
+        if len(_xs) >= 2:
+            _bw = _xs[1] - _xs[0]
+            if range_keV is None:
+                range_keV = (_xs[0], _xs[-1] + _bw)
+            if bins == 100:   # still at the default sentinel → infer
+                bins = len(_xs)
+
     ke_min, ke_max = df_first['KineticEnergy'].min(), df_first['KineticEnergy'].max()
     if range_keV is None:
         range_keV = (max(0.0, ke_min * 0.9), ke_max * 1.1)
     bin_edges = np.linspace(range_keV[0], range_keV[1], bins + 1)
 
-    # create figure
-    has_rate = rate_bin_sec is not None and 'GlobalTime' in df_first.columns
-    nrows = 2 if has_rate else 1
-    fig, axes = plt.subplots(nrows=nrows, ncols=1, figsize=(figsize[0], figsize[1] * nrows / 1),
-                             squeeze=False)
-    ax = axes[0, 0]
-    ax_rate = axes[1, 0] if has_rate else None
+    # create figure — or use the caller-supplied axes
+    if embedded:
+        # embedded mode: plot on the provided axes, no rate subplot
+        has_rate = False
+        ax_rate = None
+    else:
+        has_rate = rate_bin_sec is not None and 'GlobalTime' in df_first.columns
+        nrows = 2 if has_rate else 1
+        fig, axes = plt.subplots(nrows=nrows, ncols=1, figsize=(figsize[0], figsize[1] * nrows / 1),
+                                 squeeze=False)
+        ax = axes[0, 0]
+        ax_rate = axes[1, 0] if has_rate else None
 
     if not by_parent:
         # ── group by ParticleName (original behaviour) ──
@@ -676,8 +703,9 @@ def decay_products(df_hits, min_keV=1, max_keV=np.inf, bins=100, range_keV=None,
             if rate_log_x: ax_rate.set_xscale('log')
             if rate_log_y: ax_rate.set_yscale('log')
 
-    plt.tight_layout()
-    plt.show()
+    if not embedded:
+        plt.tight_layout()
+        plt.show()
     return ax, ax_rate
 
 
